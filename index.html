@@ -142,7 +142,7 @@
           </div>
 
           <p class="text-[10px] text-slate-500 text-center">
-            ※ 60秒 內完卷加贈神速獎 +10點，滿分 100分 再加滿分獎 +20點
+            ※ 60 秒內完卷加贈神速獎 +10 點，滿分 100 分再加滿分獎 +20 點
           </p>
         </div>
 
@@ -528,7 +528,7 @@
                 </select>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1">分類</label>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">業務分類標籤</label>
                 <input id="qCategoryInput" type="text" placeholder="例：迎賓禮儀、個資安全、緊急應變"
                   class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300">
               </div>
@@ -868,6 +868,7 @@
         isAdminLoggedIn: false,
         verifiedStaff: null,
         isPracticeMode: false,
+        isGuestTestMode: false,
         currentExamQuiz: null,
         currentQIdx: 0,
         userAnswers: {},
@@ -1020,6 +1021,9 @@
           const eIdCheck = String(r.empId || "").trim();
           const eNameCheck = String(r.empName || r.name || "").trim();
           const qTitleCheck = String(r.quizTitle || "").trim();
+          if (!eIdCheck || eIdCheck === "undefined" || !qTitleCheck || qTitleCheck === "undefined") {
+            return;
+          }
           if (!eIdCheck && !eNameCheck && !qTitleCheck) {
             return;
           }
@@ -1092,6 +1096,7 @@
       // 2. 積分回溯讀取：優先取 totalPoints / points / earnedPoints，若為 0 但 score > 0 則回退使用 score
       function getRecordEarnedPoints(r) {
         if (!r || typeof r !== "object") return 0;
+        if (isTestGuestAccount(r.empId)) return 0;
         if (r.pointsZeroed === true) return 0;
         if (appState.pointsResetAt > 0) {
           const recTs = getRecordTimestamp(r);
@@ -1117,12 +1122,17 @@
         return pts;
       }
 
-      // 3. 員工編號正規化 ("001234" 與 "1234" 皆正規化為 "1234")
+      // 3. 員工編號正規化 ("001234" 與 "1234" 皆正規化為 "1234"，"0000" 與 "000000" 皆正規化為 "0")
       function normalizeEmpId(raw) {
         const s = String(raw || "").trim();
         if (!s) return "";
         const stripped = s.replace(/^0+/, "");
         return stripped === "" ? "0" : stripped;
+      }
+
+      // 判斷是否為 0000 測試／體驗專用帳號（不限進入次數、不紀錄分數與積分）
+      function isTestGuestAccount(empId) {
+        return normalizeEmpId(empId) === "0";
       }
 
       // 4. 全形轉半形、去標點與空白、量詞數字統一並轉小寫 (用於填空/簡答自動閱卷)
@@ -1285,12 +1295,13 @@
 
       // 計算某位同仁「當年度」累積考核積分
       function getAnnualPointsForStaff(empId) {
+        if (isTestGuestAccount(empId)) return 0;
         const normTarget = normalizeEmpId(empId);
         const currentYear = String(new Date().getFullYear());
         let sum = 0;
 
         (appState.records || []).forEach(function (rec) {
-          if (rec.isPractice) return;
+          if (rec.isPractice || rec.isGuestTest) return;
           if (normalizeEmpId(rec.empId) !== normTarget) return;
           const dateStr = String(rec.date || "");
           if (!dateStr || dateStr.indexOf(currentYear) !== -1 || !/20\d{2}/.test(dateStr)) {
@@ -1592,13 +1603,14 @@
         document.getElementById("verifiedNameText").textContent = found.name;
         document.getElementById("verifiedIdText").textContent = "(" + found.empId + ")";
 
+        const isGuest = isTestGuestAccount(found.empId);
         const timely = calculateTimelyBonus();
-        document.getElementById("verifiedTimelyBadge").textContent = timely.label;
+        document.getElementById("verifiedTimelyBadge").textContent = isGuest ? "不限次數體驗" : timely.label;
 
         const annualPts = getAnnualPointsForStaff(found.empId);
-        document.getElementById("verifiedAnnualPoints").textContent = "+" + annualPts + " 點";
+        document.getElementById("verifiedAnnualPoints").textContent = isGuest ? "不計積分" : ("+" + annualPts + " 點");
 
-        // 檢查本月是否已完成該考卷
+        // 檢查本月是否已完成該考卷（0000 測試人員不受限制，可無限次進入作答）
         const activeQuiz = appState.quizDatabase[appState.activeQuizId];
         const subMsg = document.getElementById("verifiedSubMessage");
 
@@ -1610,7 +1622,7 @@
           return;
         }
 
-        const completedRec = appState.records.find(function (r) {
+        const completedRec = isGuest ? null : appState.records.find(function (r) {
           return !r.isPractice &&
             normalizeEmpId(r.empId) === normalizeEmpId(found.empId) &&
             (r.quizId === appState.activeQuizId || r.quizTitle === activeQuiz.title);
@@ -1624,7 +1636,13 @@
           startBtn.className = "w-full py-3.5 px-4 bg-slate-200 text-slate-500 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed";
           startBtn.innerHTML = '<span class="whitespace-nowrap">🔒 本月考核已完成</span>';
         } else {
-          subMsg.textContent = "身分核對正確，點擊下方按鈕即可開始考核。";
+          if (isGuest) {
+            subMsg.innerHTML =
+              '<span class="text-[#047857] font-black block">🧪 測試／體驗專用帳號（可不限次數進入考題）</span>' +
+              '<span class="text-[11px] text-slate-500 block mt-0.5">供非考試同仁體驗作答，交卷後不會紀錄分數與積分。</span>';
+          } else {
+            subMsg.textContent = "身分核對正確，點擊下方按鈕即可開始考核。";
+          }
           startBtn.disabled = false;
           startBtn.className = "w-full py-3.5 px-4 bg-[#047857] hover:bg-[#065f46] active:scale-[0.99] text-white font-black text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer";
           startBtn.innerHTML = '<span class="whitespace-nowrap">開始作答</span><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>';
@@ -1635,13 +1653,14 @@
       // 測驗作答引擎 (正向計時，無倒數或限時中斷)
       // =====================================================================
 
-      function startExamSession(quizObj, practiceFlag) {
+      function startExamSession(quizObj, practiceFlag, guestFlag) {
         if (!quizObj || !Array.isArray(quizObj.questions) || quizObj.questions.length === 0) {
           showToast("此考卷目前尚無題目，請先於管理員後台新增試題！", "⚠️", "bg-amber-700");
           return;
         }
 
         appState.isPracticeMode = Boolean(practiceFlag);
+        appState.isGuestTestMode = Boolean(guestFlag);
         appState.currentExamQuiz = quizObj;
         appState.currentQIdx = 0;
         appState.userAnswers = {};
@@ -1653,7 +1672,9 @@
 
         document.getElementById("examCandidateInfo").textContent = appState.isPracticeMode
           ? "自主刷題練習（不計入積分）"
-          : ("受測人：" + appState.verifiedStaff.name + " (" + appState.verifiedStaff.empId + ")");
+          : (appState.isGuestTestMode
+            ? ("體驗測試：" + appState.verifiedStaff.name + " (" + appState.verifiedStaff.empId + ")（不計分）")
+            : ("受測人：" + appState.verifiedStaff.name + " (" + appState.verifiedStaff.empId + ")"));
 
         startExamTimer();
         renderCurrentExamQuestion();
@@ -1993,11 +2014,12 @@
 
         const score = Math.round((correctCount / total) * 100);
         const durationStr = formatDurationText(appState.elapsedSeconds);
+        const skipRecordSave = appState.isPracticeMode || appState.isGuestTestMode;
 
         const timely = calculateTimelyBonus();
         const speedBonus = appState.elapsedSeconds <= 60 ? 10 : 0;
         const perfectBonus = score === 100 ? 20 : 0;
-        const totalPoints = appState.isPracticeMode ? 0 : (score + timely.points + speedBonus + perfectBonus);
+        const totalPoints = skipRecordSave ? 0 : (score + timely.points + speedBonus + perfectBonus);
 
         const now = new Date();
         const nowTs = now.getTime();
@@ -2026,16 +2048,17 @@
           points: totalPoints,
           earnedPoints: totalPoints,
           pointsEarned: totalPoints,
-          timelyPoints: appState.isPracticeMode ? 0 : timely.points,
-          speedPoints: appState.isPracticeMode ? 0 : speedBonus,
-          perfectPoints: appState.isPracticeMode ? 0 : perfectBonus,
+          timelyPoints: skipRecordSave ? 0 : timely.points,
+          speedPoints: skipRecordSave ? 0 : speedBonus,
+          perfectPoints: skipRecordSave ? 0 : perfectBonus,
           duration: durationStr,
           isPractice: appState.isPracticeMode,
+          isGuestTest: appState.isGuestTestMode,
           wrongDetails: wrongList,
           allDetails: detailsList
         };
 
-        if (!appState.isPracticeMode) {
+        if (!skipRecordSave) {
           appState.records.unshift(recordObj);
           saveToLocalStorage();
           // 傳送至 Google 試算表「考核成績紀錄」分頁（同時保留完整作答明細）
@@ -2051,6 +2074,8 @@
             allDetails: detailsList
           });
           showToast("考卷已提交！", "🎉", "bg-[#065f46]");
+        } else if (appState.isGuestTestMode) {
+          showToast("體驗作答完成！（0000 測試帳號不紀錄分數）", "🧪", "bg-slate-800");
         } else {
           showToast("自主刷題練習完成！以下為逐題解析", "📚", "bg-slate-800");
         }
@@ -2063,8 +2088,9 @@
         document.getElementById("examView").classList.add("hidden");
         document.getElementById("resultView").classList.remove("hidden");
 
-        document.getElementById("resultQuizTitleBadge").textContent = rec.quizTitle + (rec.isPractice ? "（練習）" : "");
-        document.getElementById("resultStatusBadge").textContent = rec.isPractice ? "練習完成" : "已完成考核";
+        const noScoreMode = Boolean(rec.isPractice || rec.isGuestTest);
+        document.getElementById("resultQuizTitleBadge").textContent = rec.quizTitle + (rec.isPractice ? "（練習）" : (rec.isGuestTest ? "（體驗測試）" : ""));
+        document.getElementById("resultStatusBadge").textContent = rec.isPractice ? "練習完成" : (rec.isGuestTest ? "體驗完成（不計分）" : "已完成考核");
 
         const empDisplay = rec.empName || rec.name || "";
         document.getElementById("resultStaffLine").textContent = "受測同仁：" + empDisplay + " (" + rec.empId + ")";
@@ -2075,13 +2101,15 @@
           : "已結算";
         document.getElementById("resultCorrectRatio").textContent = cRatio;
 
-        const pts = rec.isPractice ? 0 : getRecordEarnedPoints(rec);
+        const pts = noScoreMode ? 0 : getRecordEarnedPoints(rec);
         document.getElementById("resultPointsEarned").textContent = "+" + pts + " 點";
         document.getElementById("resultDurationText").textContent = formatDurationText(rec.duration);
 
         const breakdownEl = document.getElementById("resultBreakdownText");
         if (rec.isPractice) {
           breakdownEl.textContent = "自主刷題練習模式：本次練習不計入個人年度考核積分";
+        } else if (rec.isGuestTest) {
+          breakdownEl.textContent = "測試／體驗帳號模式：本次作答不紀錄成績與積分，可不限次數重複體驗";
         } else if (rec.timelyPoints !== undefined) {
           breakdownEl.textContent =
             "基礎得分 +" + rec.score + " 點 ｜ 早鳥加成 +" + (rec.timelyPoints || 0) +
@@ -2552,22 +2580,24 @@
         rankBody.innerHTML = "";
         const currentYear = String(new Date().getFullYear());
 
-        const rankRows = appState.roster.map(function (emp) {
-          const normId = normalizeEmpId(emp.empId);
-          const count = (appState.records || []).filter(function (r) {
-            if (r.isPractice) return false;
-            if (normalizeEmpId(r.empId) !== normId) return false;
-            const d = String(r.date || "");
-            return !d || d.indexOf(currentYear) !== -1 || !/20\d{2}/.test(d);
-          }).length;
+        const rankRows = appState.roster
+          .filter(function (emp) { return !isTestGuestAccount(emp.empId); })
+          .map(function (emp) {
+            const normId = normalizeEmpId(emp.empId);
+            const count = (appState.records || []).filter(function (r) {
+              if (r.isPractice || r.isGuestTest) return false;
+              if (normalizeEmpId(r.empId) !== normId) return false;
+              const d = String(r.date || "");
+              return !d || d.indexOf(currentYear) !== -1 || !/20\d{2}/.test(d);
+            }).length;
 
-          return {
-            empId: emp.empId,
-            name: emp.name,
-            count: count,
-            points: getAnnualPointsForStaff(emp.empId)
-          };
-        });
+            return {
+              empId: emp.empId,
+              name: emp.name,
+              count: count,
+              points: getAnnualPointsForStaff(emp.empId)
+            };
+          });
 
         rankRows.sort(function (a, b) {
           return b.points - a.points || b.count - a.count;
@@ -2597,7 +2627,7 @@
         recBody.innerHTML = "";
 
         const filteredRecs = (appState.records || []).filter(function (r) {
-          if (r.isPractice) return false;
+          if (r.isPractice || r.isGuestTest) return false;
           if (!kw) return true;
           const empName = r.empName || r.name || "";
           const text = (empName + " " + r.empId + " " + r.quizTitle).toLowerCase();
@@ -2731,17 +2761,20 @@
             showToast("目前尚無發布考卷，請先於管理員後台建立考卷！", "⚠️", "bg-amber-700");
             return;
           }
-          const completedRec = appState.records.find(function (r) {
-            return !r.isPractice &&
-              normalizeEmpId(r.empId) === normalizeEmpId(appState.verifiedStaff.empId) &&
-              (r.quizId === appState.activeQuizId || r.quizTitle === activeQuiz.title);
-          });
+          const isGuest = isTestGuestAccount(appState.verifiedStaff.empId);
+          if (!isGuest) {
+            const completedRec = appState.records.find(function (r) {
+              return !r.isPractice &&
+                normalizeEmpId(r.empId) === normalizeEmpId(appState.verifiedStaff.empId) &&
+                (r.quizId === appState.activeQuizId || r.quizTitle === activeQuiz.title);
+            });
 
-          if (completedRec) {
-            showToast("您已完成本月考核，若有疑問請詢問出題委員", "🔒", "bg-slate-800");
-            return;
+            if (completedRec) {
+              showToast("您已完成本月考核，若有疑問請詢問出題委員", "🔒", "bg-slate-800");
+              return;
+            }
           }
-          startExamSession(activeQuiz, false);
+          startExamSession(activeQuiz, false, isGuest);
         };
 
         // 測驗作答控制
@@ -2809,7 +2842,7 @@
           const targetQuiz = appState.quizDatabase[appState.studySelectedQuizId];
           if (!targetQuiz) return;
           document.getElementById("studyModal").classList.add("hidden");
-          startExamSession(targetQuiz, true);
+          startExamSession(targetQuiz, true, false);
         };
 
         // 管理員登入與登出
@@ -3087,7 +3120,7 @@
         };
 
         document.getElementById("exportCsvButton").onclick = function () {
-          const officialRecs = (appState.records || []).filter(function (r) { return !r.isPractice; });
+          const officialRecs = (appState.records || []).filter(function (r) { return !r.isPractice && !r.isGuestTest; });
           if (officialRecs.length === 0) {
             showToast("目前尚無正式考核紀錄可匯出", "⚠️", "bg-amber-700");
             return;
@@ -3153,6 +3186,13 @@
               const empVal = document.getElementById("staffEmpIdInput").value;
               if (empVal) verifyStaffEmpId(empVal);
               postAdminConfigToCloud("已刪除所有考核資料");
+              try {
+                fetch(GAS_API_URL, {
+                  method: "POST",
+                  headers: { "Content-Type": "text/plain;charset=utf-8" },
+                  body: JSON.stringify({ action: "clearRecords", clearedAt: clearedTs })
+                });
+              } catch (e) {}
             }
           });
         };
@@ -3202,5 +3242,3 @@
   </script>
 </body>
 </html>
-
-
