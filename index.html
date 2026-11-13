@@ -913,6 +913,157 @@
         return raw;
       }
 
+      // 1-2. 考核日期時間格式解析：統一為 "YYYY/MM/DD HH:mm"（還原試算表 GMT 日期字串）
+      function formatDateText(val) {
+        if (val === undefined || val === null) return "";
+        const raw = String(val).trim();
+        if (!raw) return "";
+
+        const slashMatch = raw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/);
+        if (slashMatch) {
+          return slashMatch[1] + "/" +
+            String(slashMatch[2]).padStart(2, "0") + "/" +
+            String(slashMatch[3]).padStart(2, "0") + " " +
+            String(slashMatch[4]).padStart(2, "0") + ":" +
+            String(slashMatch[5]).padStart(2, "0");
+        }
+
+        const parsedDate = new Date(raw);
+        if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() >= 2000) {
+          return parsedDate.getFullYear() + "/" +
+            String(parsedDate.getMonth() + 1).padStart(2, "0") + "/" +
+            String(parsedDate.getDate()).padStart(2, "0") + " " +
+            String(parsedDate.getHours()).padStart(2, "0") + ":" +
+            String(parsedDate.getMinutes()).padStart(2, "0");
+        }
+
+        return raw;
+      }
+
+      // 解析雲端錯題文字或陣列，並搭配題庫重建完整逐題明細（含答對與答錯與 SOP 指引）
+      function reconstructAllDetailsFromRecord(rec) {
+        if (Array.isArray(rec.allDetails) && rec.allDetails.length > 0) {
+          return rec.allDetails;
+        }
+
+        // 尋找對應考卷題庫
+        let matchedQuiz = rec.quizId ? appState.quizDatabase[rec.quizId] : null;
+        if (!matchedQuiz && rec.quizTitle) {
+          const targetTitle = String(rec.quizTitle).trim();
+          const foundKey = Object.keys(appState.quizDatabase).find(function (k) {
+            return String(appState.quizDatabase[k].title || "").trim() === targetTitle;
+          });
+          if (foundKey) matchedQuiz = appState.quizDatabase[foundKey];
+        }
+
+        if (!matchedQuiz || !Array.isArray(matchedQuiz.questions) || matchedQuiz.questions.length === 0) {
+          return null;
+        }
+
+        // 建立錯題對應表（支援陣列或 Google 試算表純文字格式）
+        const wrongByQuestionText = {};
+        if (Array.isArray(rec.wrongDetails)) {
+          rec.wrongDetails.forEach(function (w) {
+            if (w && w.question) {
+              wrongByQuestionText[String(w.question).trim()] = {
+                userAnswer: w.userAnswer || "未作答",
+                correctAnswer: w.correctAnswer || ""
+              };
+            }
+          });
+        } else if (typeof rec.wrongDetails === "string") {
+          const lines = rec.wrongDetails.split(/\r?\n/);
+          lines.forEach(function (line) {
+            const m = line.match(/^\d+\.\s*(.+?)（作答：(.+?)(?:｜正解：(.+?))?）$/);
+            if (m) {
+              wrongByQuestionText[String(m[1]).trim()] = {
+                userAnswer: m[2] || "未作答",
+                correctAnswer: m[3] || ""
+              };
+            }
+          });
+        }
+
+        return matchedQuiz.questions.map(function (q, idx) {
+          const qText = String(q.question || "").trim();
+          const stdText = formatStandardAnswerText(q);
+          const wrongHit = wrongByQuestionText[qText];
+          const isCorrect = !wrongHit;
+
+          return {
+            qIndex: idx + 1,
+            type: q.type,
+            typeLabel: getQuestionTypeLabel(q.type),
+            category: q.category || "業務實務",
+            question: q.question,
+            isCorrect: isCorrect,
+            userAnswerText: isCorrect ? stdText : wrongHit.userAnswer,
+            standardAnswerText: stdText,
+            explanation: q.explanation || "請參照標準作業程序。"
+          };
+        });
+      }
+
+      // 合併並去除重複考核紀錄（優先保留含完整作答明細 allDetails 與正確耗時格式的紀錄）
+      function deduplicateAndNormalizeRecords(rawList) {
+        if (!Array.isArray(rawList)) return [];
+        const keyToIndex = new Map();
+        const result = [];
+
+        rawList.forEach(function (r) {
+          if (!r || typeof r !== "object") return;
+          const recTs = getRecordTimestamp(r);
+          if (appState.recordsClearedAt > 0 && (recTs === 0 || recTs <= appState.recordsClearedAt)) {
+            return;
+          }
+
+          const eName = r.empName || r.name || "";
+          const cleanDate = formatDateText(r.date);
+          const isZeroed = r.pointsZeroed === true || (appState.pointsResetAt > 0 && (recTs === 0 || recTs <= appState.pointsResetAt));
+          const pts = isZeroed ? 0 : getRecordEarnedPoints(r);
+          const cleanDuration = formatDurationText(r.duration || r.timeSpent || "");
+
+          const normalizedRec = Object.assign({}, r, {
+            empName: eName,
+            name: eName,
+            date: cleanDate,
+            totalPoints: pts,
+            points: pts,
+            earnedPoints: pts,
+            pointsEarned: pts,
+            pointsZeroed: isZeroed,
+            duration: cleanDuration
+          });
+
+          const dedupKey = normalizeEmpId(normalizedRec.empId) + "_" +
+            String(normalizedRec.quizTitle || "").trim() + "_" +
+            cleanDate + "_" +
+            Number(normalizedRec.score || 0);
+
+          const hasAllDetails = Array.isArray(normalizedRec.allDetails) && normalizedRec.allDetails.length > 0;
+          const hasWrongArray = Array.isArray(normalizedRec.wrongDetails);
+
+          if (!keyToIndex.has(dedupKey)) {
+            keyToIndex.set(dedupKey, result.length);
+            result.push(normalizedRec);
+          } else {
+            const existingIdx = keyToIndex.get(dedupKey);
+            const existingRec = result[existingIdx];
+            const existingHasAll = Array.isArray(existingRec.allDetails) && existingRec.allDetails.length > 0;
+            const existingHasWrongArray = Array.isArray(existingRec.wrongDetails);
+
+            if ((hasAllDetails && !existingHasAll) || (hasWrongArray && !existingHasWrongArray && !existingHasAll)) {
+              result[existingIdx] = Object.assign({}, existingRec, normalizedRec, {
+                allDetails: hasAllDetails ? normalizedRec.allDetails : existingRec.allDetails,
+                wrongDetails: hasWrongArray ? normalizedRec.wrongDetails : existingRec.wrongDetails
+              });
+            }
+          }
+        });
+
+        return result;
+      }
+
       // 解析紀錄時間戳記（用於年度積分歸零與刪除資料比對）
       function getRecordTimestamp(r) {
         if (!r || typeof r !== "object") return 0;
@@ -1209,8 +1360,7 @@
             ? parsedRoster
             : normalizeRoster(DEFAULT_ROSTER);
 
-          appState.records = savedRecords ? JSON.parse(savedRecords) : [];
-          if (!Array.isArray(appState.records)) appState.records = [];
+          appState.records = savedRecords ? deduplicateAndNormalizeRecords(JSON.parse(savedRecords)) : [];
 
           const dbKeys = Object.keys(appState.quizDatabase);
           if (savedActive && appState.quizDatabase[savedActive]) {
@@ -1283,34 +1433,7 @@
 
           const cloudRecords = data && (Array.isArray(data.records) ? data.records : (Array.isArray(data.examRecords) ? data.examRecords : null));
           if (cloudRecords) {
-            const seenIds = new Set();
-            const merged = [];
-            cloudRecords.concat(appState.records).forEach(function (r) {
-              const recTs = getRecordTimestamp(r);
-              if (appState.recordsClearedAt > 0 && (recTs === 0 || recTs <= appState.recordsClearedAt)) {
-                return;
-              }
-              const eName = r.empName || r.name || "";
-              const isZeroed = r.pointsZeroed === true || (appState.pointsResetAt > 0 && (recTs === 0 || recTs <= appState.pointsResetAt));
-              const pts = isZeroed ? 0 : getRecordEarnedPoints(r);
-              const cleanDuration = formatDurationText(r.duration || r.timeSpent || "");
-              const normalizedRec = Object.assign({}, r, {
-                empName: eName,
-                name: eName,
-                totalPoints: pts,
-                points: pts,
-                earnedPoints: pts,
-                pointsEarned: pts,
-                pointsZeroed: isZeroed,
-                duration: cleanDuration
-              });
-              const key = normalizedRec.recordId || (normalizeEmpId(normalizedRec.empId) + "_" + normalizedRec.quizTitle + "_" + normalizedRec.date);
-              if (!seenIds.has(key)) {
-                seenIds.add(key);
-                merged.push(normalizedRec);
-              }
-            });
-            appState.records = merged;
+            appState.records = deduplicateAndNormalizeRecords(appState.records.concat(cloudRecords));
             hasChanges = true;
           }
 
@@ -1877,7 +2000,7 @@
         if (!appState.isPracticeMode) {
           appState.records.unshift(recordObj);
           saveToLocalStorage();
-          // 傳送至 Google 試算表「考核成績紀錄」分頁
+          // 傳送至 Google 試算表「考核成績紀錄」分頁（同時保留完整作答明細）
           postExamScoreToCloud({
             date: dateStr,
             empId: empIdStr,
@@ -1886,7 +2009,8 @@
             score: score,
             totalPoints: totalPoints,
             duration: durationStr,
-            wrongDetails: wrongList
+            wrongDetails: wrongList,
+            allDetails: detailsList
           });
           showToast("考卷已提交！", "🎉", "bg-[#065f46]");
         } else {
@@ -1931,8 +2055,9 @@
         const listContainer = document.getElementById("resultDetailsList");
         listContainer.innerHTML = "";
 
-        if (Array.isArray(rec.allDetails) && rec.allDetails.length > 0) {
-          rec.allDetails.forEach(function (d, idx) {
+        const resolvedDetails = reconstructAllDetailsFromRecord(rec);
+        if (Array.isArray(resolvedDetails) && resolvedDetails.length > 0) {
+          resolvedDetails.forEach(function (d, idx) {
             const card = document.createElement("div");
             card.className = d.isCorrect
               ? "p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2 text-xs"
@@ -1958,20 +2083,6 @@
               '</div>';
             listContainer.appendChild(card);
           });
-        } else {
-          const fallbackQuiz = appState.quizDatabase[rec.quizId] || appState.quizDatabase[appState.activeQuizId];
-          if (fallbackQuiz && Array.isArray(fallbackQuiz.questions)) {
-            fallbackQuiz.questions.forEach(function (q, idx) {
-              const card = document.createElement("div");
-              card.className = "p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5 text-xs";
-              card.innerHTML =
-                '<span class="font-black text-[#065f46] block">第 ' + (idx + 1) + ' 題 · ' + escapeHtml(getQuestionTypeLabel(q.type)) + '</span>' +
-                '<p class="font-bold text-slate-900">' + escapeHtml(q.question) + '</p>' +
-                '<p class="text-[11px] font-bold text-[#047857]">標準解答：' + escapeHtml(formatStandardAnswerText(q)) + '</p>' +
-                '<p class="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200"><strong>SOP 指引：</strong>' + escapeHtml(q.explanation || "") + '</p>';
-              listContainer.appendChild(card);
-            });
-          }
         }
       }
 
@@ -2466,7 +2577,10 @@
           const empName = rec.empName || rec.name || "";
           const pts = getRecordEarnedPoints(rec);
           const cleanDuration = formatDurationText(rec.duration);
-          const wrongArr = Array.isArray(rec.wrongDetails) ? rec.wrongDetails : [];
+          const resolvedDetails = reconstructAllDetailsFromRecord(rec);
+          const wrongCountFromDetails = Array.isArray(resolvedDetails)
+            ? resolvedDetails.filter(function (d) { return !d.isCorrect; }).length
+            : (Array.isArray(rec.wrongDetails) ? rec.wrongDetails.length : 0);
 
           tr.innerHTML =
             '<td class="py-2.5 pr-2 whitespace-nowrap">' +
@@ -2486,10 +2600,10 @@
           tdDetail.className = "py-2.5 text-right whitespace-nowrap";
           const detailBtn = document.createElement("button");
           detailBtn.type = "button";
-          detailBtn.className = wrongArr.length > 0
+          detailBtn.className = wrongCountFromDetails > 0
             ? "px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] rounded-lg border border-rose-200 transition whitespace-nowrap"
             : "px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition whitespace-nowrap";
-          detailBtn.textContent = wrongArr.length > 0 ? ("錯 " + wrongArr.length + " 題明細") : "作答明細";
+          detailBtn.textContent = wrongCountFromDetails > 0 ? ("錯 " + wrongCountFromDetails + " 題明細") : "作答明細";
           detailBtn.onclick = function () {
             openWrongDetailModal(rec);
           };
@@ -2509,8 +2623,10 @@
         const body = document.getElementById("wrongDetailBody");
         body.innerHTML = "";
 
-        if (Array.isArray(rec.allDetails) && rec.allDetails.length > 0) {
-          rec.allDetails.forEach(function (d, idx) {
+        const resolvedDetails = reconstructAllDetailsFromRecord(rec);
+
+        if (Array.isArray(resolvedDetails) && resolvedDetails.length > 0) {
+          resolvedDetails.forEach(function (d, idx) {
             const box = document.createElement("div");
             box.className = d.isCorrect
               ? "p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-1.5 text-xs"
