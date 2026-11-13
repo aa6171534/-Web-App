@@ -1,0 +1,3057 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>糾察隊考試</title>
+
+  <!-- 行動裝置 Web App 設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="糾察隊考試">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#065f46">
+
+  <!-- Google Fonts: Noto Sans TC & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: "Noto Sans TC", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col justify-between selection:bg-[#065f46] selection:text-white">
+
+  <!-- ===================================================================== -->
+  <!-- 1. 頂部導航列 (標題：「糾察隊考試」、雲端連線狀態、考券複習與管理員模式)  -->
+  <!-- ===================================================================== -->
+  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-lg mx-auto px-4 py-3 space-y-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <!-- 翠綠盾牌圖示徽章 -->
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#065f46] to-[#047857] text-white flex items-center justify-center shadow-xs shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base sm:text-lg font-black text-slate-900 tracking-tight whitespace-nowrap truncate">糾察隊考試</h1>
+          </div>
+        </div>
+
+        <!-- 雲端自動連線狀態膠囊 -->
+        <span id="cloudStatusBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#065f46] border border-emerald-200 flex items-center gap-1.5 whitespace-nowrap shrink-0">
+          <span id="cloudStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="cloudStatusText">雲端已連線</span>
+        </span>
+      </div>
+
+      <!-- 雙功能導航按鈕 (不設公開榮譽榜) -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <button id="openStudyBtn" type="button" class="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 active:scale-[0.98] text-slate-700 font-bold text-xs rounded-xl border border-slate-200 flex items-center justify-center gap-1.5 transition">
+          <span class="whitespace-nowrap">📚 考券複習</span>
+        </button>
+        <button id="openAdminBtn" type="button" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1.5 transition">
+          <span class="whitespace-nowrap">⚙️ 管理員模式</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 全域浮動 Toast 訊息提示 -->
+  <div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-[90] hidden transition-all duration-200 max-w-[92vw]">
+    <div id="toastBox" class="px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl flex items-center gap-2 bg-slate-800">
+      <span id="toastIcon">ℹ️</span>
+      <span id="toastMessage">系統提示</span>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. 主畫面容器                                                          -->
+  <!-- ===================================================================== -->
+  <main class="max-w-lg mx-auto w-full px-4 py-5 flex-1">
+
+    <!-- 畫面 A：首頁員工身分驗證與個人年度積分檢視 -->
+    <section id="homeView" class="space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 p-5 space-y-4">
+        <!-- 當前發布考卷標題列 (僅顯示考卷標題與「進行中」標籤，無限時、無及格分數) -->
+        <div class="flex items-start justify-between gap-2.5">
+          <h2 id="homeQuizTitle" class="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug min-w-0">
+            目前尚無發布考卷
+          </h2>
+          <span class="text-xs font-black px-2.5 py-1 rounded-lg bg-[#065f46] text-white shadow-2xs whitespace-nowrap shrink-0">
+            進行中
+          </span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-[11px] font-bold text-slate-600">
+          <span id="homeQuizMetaCount" class="px-2.5 py-1 rounded-lg bg-slate-100 whitespace-nowrap shrink-0">共 0 題（單選/是非/複選/簡答）</span>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-[#065f46] border border-emerald-200/70 whitespace-nowrap shrink-0">不限作答時間</span>
+        </div>
+
+        <!-- 早鳥階梯加分規則 -->
+        <div class="bg-gradient-to-br from-emerald-50/90 to-teal-50/60 border border-emerald-200/80 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-emerald-950 flex items-center gap-1.5 whitespace-nowrap">
+              <span>⚡</span>
+              <span>每月早鳥完成階梯加分規則</span>
+            </span>
+            <span class="text-[10px] font-bold text-[#065f46] bg-white/90 px-2 py-0.5 rounded-md border border-emerald-200 whitespace-nowrap shrink-0">
+              計入年度積分
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="bg-white/95 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-between gap-1">
+              <span class="text-slate-600 font-semibold whitespace-nowrap">第 1 週 (1~7日)</span>
+              <span class="font-black text-[#047857] whitespace-nowrap shrink-0">+40 點</span>
+            </div>
+            <div class="bg-white/95 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-between gap-1">
+              <span class="text-slate-600 font-semibold whitespace-nowrap">第 2 週 (8~14日)</span>
+              <span class="font-black text-[#047857] whitespace-nowrap shrink-0">+25 點</span>
+            </div>
+            <div class="bg-white/95 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-between gap-1">
+              <span class="text-slate-600 font-semibold whitespace-nowrap">第 3 週 (15~21日)</span>
+              <span class="font-black text-[#047857] whitespace-nowrap shrink-0">+10 點</span>
+            </div>
+            <div class="bg-white/95 px-2.5 py-2 rounded-lg border border-emerald-100 flex items-center justify-between gap-1">
+              <span class="text-slate-600 font-semibold whitespace-nowrap">第 4 週 (22日後)</span>
+              <span class="font-bold text-slate-400 whitespace-nowrap shrink-0">+0 點</span>
+            </div>
+          </div>
+
+          <p class="text-[10px] text-slate-500 text-center">
+            ※ 60 秒內完卷加贈神速獎 +10 點，滿分 100 分再加滿分獎 +20 點
+          </p>
+        </div>
+
+        <!-- 員工編號輸入框 -->
+        <div class="space-y-1.5">
+          <label for="staffEmpIdInput" class="block text-xs font-black text-slate-700 whitespace-nowrap">員工編號 (Emp ID) *</label>
+          <input id="staffEmpIdInput" type="text" inputmode="numeric" autocomplete="off"
+            placeholder="請輸入員編，例如：001234 或 1234"
+            class="w-full text-sm font-bold rounded-xl border border-slate-300 px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-[#065f46] focus:border-transparent transition bg-slate-50/50 focus:bg-white">
+        </div>
+
+        <!-- 同仁身分核對與個人年度累積積分卡片 (無職稱標籤，所有文字強制水平不換行) -->
+        <div id="staffVerifiedCard" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+          <div class="flex items-center justify-between gap-2 overflow-x-auto custom-scroll">
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span id="verifiedNameText" class="text-sm sm:text-base font-black text-slate-900 whitespace-nowrap shrink-0">陳怡君</span>
+              <span id="verifiedIdText" class="text-xs sm:text-sm font-mono font-bold text-slate-500 whitespace-nowrap shrink-0">(001234)</span>
+            </div>
+            <span id="verifiedTimelyBadge" class="text-[11px] font-black px-2.5 py-1 rounded-lg bg-[#fef3c7] text-[#d97706] border border-amber-200 whitespace-nowrap shrink-0">
+              第 2 週及時 (+25點)
+            </span>
+          </div>
+
+          <!-- 個人專屬年度累積積分 box -->
+          <div class="bg-[#fef3c7]/70 border border-amber-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-amber-950 whitespace-nowrap shrink-0">⭐ 個人年度累積考核積分</span>
+            <span id="verifiedAnnualPoints" class="text-sm font-black text-[#d97706] font-mono whitespace-nowrap shrink-0">+0 點</span>
+          </div>
+
+          <p id="verifiedSubMessage" class="text-xs text-slate-600 font-medium leading-relaxed">
+            身分核對正確，點擊下方按鈕即可開始考核。
+          </p>
+        </div>
+
+        <!-- 查無員編提示卡 -->
+        <div id="staffNotFoundCard" class="hidden bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-800 space-y-1">
+          <p class="font-black">查無此員工編號</p>
+          <p class="text-[11px] text-rose-600">請確認輸入是否正確，或請主管於「管理員模式 ➜ 同仁名冊」新增您的資料。</p>
+        </div>
+
+        <!-- 開始考核按鈕 -->
+        <button id="startExamButton" type="button" disabled
+          class="w-full py-3.5 px-4 bg-slate-200 text-slate-400 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed">
+          <span class="whitespace-nowrap">開始作答</span>
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- 畫面 B：測驗作答介面 (正向計時器「測驗耗時 00:00」，無限時中斷) -->
+    <section id="examView" class="hidden space-y-3.5">
+      <!-- 頂部狀態列 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-3 flex items-center justify-between gap-2 shadow-2xs">
+        <button id="quitExamButton" type="button" class="text-xs font-bold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-3 py-1.5 rounded-xl flex items-center gap-1 transition whitespace-nowrap shrink-0">
+          <span>← 返回首頁</span>
+        </button>
+
+        <div class="text-center min-w-0">
+          <span id="examCandidateInfo" class="text-[11px] font-bold text-slate-500 block whitespace-nowrap truncate">受測人：陳怡君</span>
+        </div>
+
+        <div class="flex items-center gap-1.5 font-mono text-xs sm:text-sm font-black text-[#065f46] bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 whitespace-nowrap shrink-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span id="examTimerText">測驗耗時 00:00</span>
+        </div>
+      </div>
+
+      <!-- 作答進度條 -->
+      <div class="bg-white rounded-xl border border-slate-200 px-3.5 py-2.5 space-y-1.5">
+        <div class="flex items-center justify-between text-[11px] font-bold text-slate-500">
+          <span id="examProgressLabel" class="whitespace-nowrap">作答進度：0 / 4 題</span>
+          <span id="examProgressPct" class="font-mono text-[#047857] whitespace-nowrap">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div id="examProgressBar" class="h-full bg-[#047857] transition-all duration-300 rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- 題目作答主卡片 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between min-h-[370px] space-y-5">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5">
+              <span id="examQuestionTypeBadge" class="text-[11px] font-black px-2.5 py-1 rounded-lg bg-[#fef3c7] text-[#d97706] border border-amber-200 whitespace-nowrap shrink-0">
+                單選題
+              </span>
+              <span id="examQuestionCatBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-[#065f46] border border-emerald-200 whitespace-nowrap shrink-0">
+                迎賓禮儀
+              </span>
+            </div>
+            <span id="examQuestionCounter" class="text-xs font-black text-slate-500 font-mono whitespace-nowrap shrink-0">
+              第 1 / 4 題
+            </span>
+          </div>
+
+          <h3 id="examQuestionPrompt" class="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
+            題目載入中...
+          </h3>
+
+          <!-- 動態作答互動區塊 (依據 single / boolean / multiple / text 切換) -->
+          <div id="examAnswerArea" class="space-y-2.5"></div>
+        </div>
+
+        <!-- 上一題 / 下一題 / 提交考卷 -->
+        <div class="pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2">
+          <button id="examPrevBtn" type="button" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition whitespace-nowrap shrink-0">
+            ← 上一題
+          </button>
+
+          <button id="examNextBtn" type="button" class="py-2.5 px-5 bg-[#047857] hover:bg-[#065f46] text-white font-bold text-xs rounded-xl shadow-2xs transition whitespace-nowrap shrink-0">
+            下一題 →
+          </button>
+
+          <button id="examSubmitBtn" type="button" class="hidden py-2.5 px-5 bg-slate-900 hover:bg-[#065f46] text-white font-black text-xs rounded-xl shadow-sm transition whitespace-nowrap shrink-0">
+            ✓ 提交考卷並結算
+          </button>
+        </div>
+      </div>
+
+      <!-- 題號快速跳轉列 -->
+      <div id="examNavPills" class="bg-white rounded-xl border border-slate-200 p-2.5 flex items-center gap-2 overflow-x-auto custom-scroll"></div>
+    </section>
+
+    <!-- 畫面 C：考後成績結算與逐題詳解 (顯示「已完成考核」，無及格判定、無榮譽榜按鈕) -->
+    <section id="resultView" class="hidden space-y-4">
+      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-[#065f46] text-white rounded-2xl p-5 space-y-4 shadow-md">
+        <div class="flex items-center justify-between gap-2">
+          <span id="resultQuizTitleBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/10 text-emerald-200 border border-white/10 truncate">
+            11月份糾察隊定期考核
+          </span>
+          <span id="resultStatusBadge" class="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 whitespace-nowrap shrink-0">
+            已完成考核
+          </span>
+        </div>
+
+        <div class="flex items-end justify-between gap-2">
+          <div class="min-w-0">
+            <h2 class="text-xl font-black tracking-tight whitespace-nowrap">測驗成績結算單</h2>
+            <p id="resultStaffLine" class="text-xs text-slate-300 mt-1 whitespace-nowrap">受測同仁：陳怡君 (001234)</p>
+          </div>
+          <div class="text-right shrink-0">
+            <span class="text-[11px] text-slate-400 block whitespace-nowrap">本次得分</span>
+            <span id="resultScoreText" class="text-4xl font-black text-amber-400 font-mono">100</span>
+            <span class="text-xs text-slate-400">/ 100</span>
+          </div>
+        </div>
+
+        <div class="pt-3.5 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
+          <div class="bg-white/5 rounded-xl p-2">
+            <span class="text-[10px] text-slate-400 block whitespace-nowrap">答對題數</span>
+            <span id="resultCorrectRatio" class="text-sm font-black text-emerald-400 font-mono whitespace-nowrap">4 / 4</span>
+          </div>
+          <div class="bg-white/5 rounded-xl p-2">
+            <span class="text-[10px] text-slate-400 block whitespace-nowrap">獲得總積分</span>
+            <span id="resultPointsEarned" class="text-sm font-black text-amber-400 font-mono whitespace-nowrap">+155 點</span>
+          </div>
+          <div class="bg-white/5 rounded-xl p-2">
+            <span class="text-[10px] text-slate-400 block whitespace-nowrap">測驗耗時</span>
+            <span id="resultDurationText" class="text-sm font-black text-slate-200 font-mono whitespace-nowrap">00:18</span>
+          </div>
+        </div>
+
+        <p id="resultBreakdownText" class="text-[11px] text-emerald-200/95 bg-white/5 rounded-lg px-3 py-2 text-center">
+          基礎得分 +100 點 ｜ 早鳥加成 +25 點 ｜ 神速獎 +10 點 ｜ 滿分獎 +20 點
+        </p>
+      </div>
+
+      <!-- 逐題對照與標準指引 -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-2xs">
+        <h3 class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+          <span>📋</span>
+          <span>逐題作答對照與標準作業指引</span>
+        </h3>
+        <div id="resultDetailsList" class="space-y-3"></div>
+      </div>
+
+      <button id="resultReturnHomeBtn" type="button"
+        class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-black text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+        <span class="whitespace-nowrap">完成並返回首頁</span>
+      </button>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="text-center py-4 text-[11px] text-slate-400 font-medium">
+    糾察隊考試 &copy; 2026
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- 3. 模態視窗群 (考券複習、管理員登入、管理員後台、明細與確認框)            -->
+  <!-- ===================================================================== -->
+
+  <!-- Modal 1：考券複習專區 (僅顯示 quiz.id !== activeQuizId && quiz.inReviewZone === true) -->
+  <div id="studyModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3.5">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[88vh] overflow-hidden">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2 shrink-0">
+        <div class="min-w-0">
+          <h3 class="text-sm font-black text-slate-900 whitespace-nowrap">📚 考券複習專區</h3>
+          <p class="text-[11px] text-slate-400 truncate">自由瀏覽已開放複習之歷史試題與 SOP 解析</p>
+        </div>
+        <button id="closeStudyBtn" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-black shrink-0">
+          ✕
+        </button>
+      </div>
+
+      <!-- 試卷切換膠囊按鈕列 (使用 flex flex-wrap gap-2 防止文字裁切與重疊) -->
+      <div id="studyTabsBar" class="px-4 py-3 border-b border-slate-100 flex flex-wrap gap-2 bg-slate-50/70 shrink-0"></div>
+
+      <!-- 試卷資訊與自主刷題按鈕 (有開放複習考券時顯示) -->
+      <div id="studyHeaderInfoBar" class="px-4 py-3 bg-emerald-50/70 border-b border-emerald-100 flex items-center justify-between gap-3 shrink-0">
+        <div class="min-w-0 flex-1">
+          <h4 id="studyQuizTitle" class="text-xs sm:text-sm font-black text-emerald-950 truncate">考卷名稱</h4>
+          <span id="studyQuizSubtitle" class="text-[11px] font-bold text-[#047857] whitespace-nowrap">共 2 題標準試題</span>
+        </div>
+        <button id="startPracticeBtn" type="button" class="px-3.5 py-2 bg-[#047857] hover:bg-[#065f46] text-white font-bold text-xs rounded-xl shadow-2xs transition whitespace-nowrap shrink-0 inline-flex items-center justify-center">
+          ✏️ 自主刷題練習
+        </button>
+      </div>
+
+      <!-- 題庫解析列表 / 無開放複習考券提示 -->
+      <div id="studyQuestionsContainer" class="p-4 overflow-y-auto flex-1 space-y-3 custom-scroll"></div>
+    </div>
+  </div>
+
+  <!-- Modal 2：管理員登入視窗 -->
+  <div id="adminLoginModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-2xl shadow-xl p-5 space-y-4">
+      <div class="text-center space-y-1">
+        <div class="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center mx-auto shadow-xs">
+          <span class="text-lg">🔐</span>
+        </div>
+        <h3 class="text-base font-black text-slate-900">管理員模式登入</h3>
+      </div>
+
+      <div>
+        <input id="adminPasswordInput" type="password" inputmode="numeric" placeholder="請輸入管理員密碼"
+          class="w-full text-sm font-bold p-3 rounded-xl border border-slate-300 text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-[#065f46]">
+      </div>
+
+      <div class="flex gap-2">
+        <button id="cancelAdminLoginBtn" type="button" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition whitespace-nowrap">
+          取消
+        </button>
+        <button id="submitAdminLoginBtn" type="button" class="flex-1 py-2.5 bg-slate-900 hover:bg-[#065f46] text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap">
+          登入後台
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3：管理員後台主控台 -->
+  <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
+      <!-- 頂部標題與雲端狀態列 -->
+      <div class="p-4 border-b border-slate-200 space-y-3 shrink-0">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-base">⚙️</span>
+            <h3 class="text-sm sm:text-base font-black text-slate-900 whitespace-nowrap truncate">糾察隊考試後台管理中心</h3>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button id="adminLogoutBtn" type="button" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition whitespace-nowrap">
+              登出
+            </button>
+            <button id="closeAdminPanelBtn" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-black">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- 雲端自動綁定狀態列 (嚴禁出現任何網址輸入欄位) -->
+        <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+          <span class="text-xs font-black text-[#065f46] whitespace-nowrap truncate">☁️ Google 雲端硬碟已自動綁定</span>
+          <button id="adminSyncNowBtn" type="button"
+            class="px-3 py-1.5 bg-[#047857] hover:bg-[#065f46] active:scale-95 text-white font-bold text-xs rounded-lg shadow-2xs transition whitespace-nowrap shrink-0">
+            🔄 立即同步
+          </button>
+        </div>
+
+        <!-- 後台三大功能分頁切換列 -->
+        <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+          <button id="tabBtnQuizzes" type="button" class="py-2 px-2 rounded-lg bg-white text-slate-900 font-black text-xs shadow-2xs transition whitespace-nowrap">
+            📝 考卷與出題
+          </button>
+          <button id="tabBtnRoster" type="button" class="py-2 px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-xs transition whitespace-nowrap">
+            🪪 同仁名冊
+          </button>
+          <button id="tabBtnRanking" type="button" class="py-2 px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-xs transition whitespace-nowrap">
+            👑 全員年度積分與成績
+          </button>
+        </div>
+      </div>
+
+      <!-- 分頁內容區 -->
+      <div class="p-4 overflow-y-auto flex-1 custom-scroll">
+
+        <!-- =============================================================== -->
+        <!-- 分頁 1：考卷設定與四大題型出題編輯器                              -->
+        <!-- =============================================================== -->
+        <div id="adminTabQuizzes" class="space-y-4">
+          <!-- 考卷選擇與建立 -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <span class="text-xs font-black text-slate-800 whitespace-nowrap">選擇或管理考核試卷</span>
+              <div class="flex items-center gap-1.5">
+                <button id="toggleCreateQuizBtn" type="button" class="px-2.5 py-1 bg-[#047857] hover:bg-[#065f46] text-white font-bold text-xs rounded-lg transition whitespace-nowrap">
+                  + 新增考卷
+                </button>
+                <button id="deleteSelectedQuizBtn" type="button" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-lg border border-rose-200 transition whitespace-nowrap">
+                  刪除考卷
+                </button>
+              </div>
+            </div>
+
+            <!-- 新增考卷內嵌輸入列 (預設 inReviewZone: false 草稿狀態) -->
+            <div id="createQuizInlineRow" class="hidden flex gap-2 pt-2 border-t border-slate-200">
+              <input id="newQuizTitleInput" type="text" placeholder="輸入新考卷名稱 (建立後預設為未公開草稿)"
+                class="flex-1 text-xs font-bold px-3 py-2 rounded-xl border border-slate-300 bg-white">
+              <button id="confirmCreateQuizBtn" type="button" class="px-3.5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl whitespace-nowrap shrink-0">
+                建立
+              </button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+              <select id="adminQuizSelect" class="flex-1 text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white"></select>
+              <button id="setActiveQuizBtn" type="button" class="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow-2xs transition whitespace-nowrap shrink-0">
+                ★ 設為目前發布考卷
+              </button>
+            </div>
+
+            <!-- 考卷基本設定區 (徹底刪除限時與及格分數，保留標題並新增「是否加入複習專區」) -->
+            <div class="space-y-3 pt-2.5 border-t border-slate-200">
+              <div>
+                <label for="quizMetaTitleInput" class="block text-[11px] font-black text-slate-700 mb-1">考卷標題 *</label>
+                <input id="quizMetaTitleInput" type="text" class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
+              </div>
+
+              <!-- 是否加入複習專區控制項 -->
+              <div id="reviewZoneControlBox" class="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
+                <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input id="quizInReviewZoneCheckbox" type="checkbox" class="w-4 h-4 mt-0.5 accent-[#047857] rounded shrink-0">
+                  <div class="min-w-0">
+                    <span id="reviewZoneLabelTitle" class="text-xs font-black text-slate-800 block">
+                      📚 加入「考券複習專區」（勾選後同仁可於前台複習此卷）
+                    </span>
+                    <span id="reviewZoneLockHint" class="hidden text-[11px] font-bold text-amber-700 block mt-0.5">
+                      🔒 目前發布中之考券，系統自動鎖定不列入複習專區（避免考題外洩）
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <button id="saveQuizMetaBtn" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition whitespace-nowrap">
+              💾 儲存考卷基本設定
+            </button>
+          </div>
+
+          <!-- 四大題型新增 / 編輯表單 -->
+          <div class="bg-white border-2 border-emerald-600/20 rounded-2xl p-4 space-y-3 shadow-2xs">
+            <div class="flex items-center justify-between gap-2">
+              <h4 id="qEditorHeading" class="text-xs font-black text-[#065f46] whitespace-nowrap">➕ 新增考題（支援四大題型）</h4>
+              <button id="cancelEditQuestionBtn" type="button" class="hidden text-[11px] font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg whitespace-nowrap">
+                取消編輯
+              </button>
+            </div>
+
+            <!-- 題型選擇與業務分類 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">題型選擇 *</label>
+                <select id="qTypeSelect" class="w-full text-xs font-black p-2.5 rounded-xl border border-slate-300 bg-amber-50/50 text-slate-900 focus:ring-2 focus:ring-[#065f46]">
+                  <option value="single">🔘 單選題（4選1）</option>
+                  <option value="boolean">⭕ 是非題（O / X）</option>
+                  <option value="multiple">☑️ 複選題（全對給分）</option>
+                  <option value="text">✍️ 填空 / 簡答題</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">業務分類標籤</label>
+                <input id="qCategoryInput" type="text" placeholder="例：迎賓禮儀、個資安全、緊急應變"
+                  class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300">
+              </div>
+            </div>
+
+            <!-- 題目敘述 -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">題目敘述 * <span id="qPromptHint" class="text-[10px] font-normal text-slate-400"></span></label>
+              <textarea id="qPromptInput" rows="2" placeholder="請輸入完整題目內容..."
+                class="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-[#065f46]"></textarea>
+            </div>
+
+            <!-- 動態答案設定區 A：單選題 (single) -->
+            <div id="editorFieldsSingle" class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <span class="block text-[11px] font-black text-slate-700">設定 A～D 四個選項，並點選左側圓鈕指定唯一正解：</span>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="singleCorrectRadio" value="0" checked class="w-4 h-4 accent-[#047857] shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">A</span>
+                  <input id="singleOpt0" type="text" placeholder="輸入選項 A 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="singleCorrectRadio" value="1" class="w-4 h-4 accent-[#047857] shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">B</span>
+                  <input id="singleOpt1" type="text" placeholder="輸入選項 B 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="singleCorrectRadio" value="2" class="w-4 h-4 accent-[#047857] shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">C</span>
+                  <input id="singleOpt2" type="text" placeholder="輸入選項 C 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="singleCorrectRadio" value="3" class="w-4 h-4 accent-[#047857] shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">D</span>
+                  <input id="singleOpt3" type="text" placeholder="輸入選項 D 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+              </div>
+            </div>
+
+            <!-- 動態答案設定區 B：是非題 (boolean) -->
+            <div id="editorFieldsBoolean" class="hidden space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <span class="block text-[11px] font-black text-slate-700">選擇是非題標準答案：</span>
+              <div class="grid grid-cols-2 gap-2.5">
+                <label class="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-300 bg-white cursor-pointer hover:border-[#047857]">
+                  <input type="radio" name="booleanCorrectRadio" value="true" checked class="w-4 h-4 accent-[#047857]">
+                  <span class="text-xs font-black text-emerald-800 whitespace-nowrap">⭕ 正確 (O)</span>
+                </label>
+                <label class="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-300 bg-white cursor-pointer hover:border-rose-500">
+                  <input type="radio" name="booleanCorrectRadio" value="false" class="w-4 h-4 accent-rose-600">
+                  <span class="text-xs font-black text-rose-700 whitespace-nowrap">❌ 錯誤 (X)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 動態答案設定區 C：複選題 (multiple) -->
+            <div id="editorFieldsMultiple" class="hidden space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <span class="block text-[11px] font-black text-slate-700">設定 A～D 四個選項，並勾選 2 個以上正確答案：</span>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="multiCorrectCheck" value="0" class="w-4 h-4 accent-[#047857] rounded shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">A</span>
+                  <input id="multiOpt0" type="text" placeholder="輸入選項 A 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="multiCorrectCheck" value="1" class="w-4 h-4 accent-[#047857] rounded shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">B</span>
+                  <input id="multiOpt1" type="text" placeholder="輸入選項 B 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="multiCorrectCheck" value="2" class="w-4 h-4 accent-[#047857] rounded shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">C</span>
+                  <input id="multiOpt2" type="text" placeholder="輸入選項 C 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" name="multiCorrectCheck" value="3" class="w-4 h-4 accent-[#047857] rounded shrink-0">
+                  <span class="text-xs font-black text-slate-500 w-4">D</span>
+                  <input id="multiOpt3" type="text" placeholder="輸入選項 D 內容 *" class="flex-1 text-xs p-2 rounded-lg border border-slate-300 bg-white">
+                </div>
+              </div>
+            </div>
+
+            <!-- 動態答案設定區 D：填空 / 簡答題 (text) -->
+            <div id="editorFieldsText" class="hidden space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div>
+                <label class="block text-[11px] font-black text-slate-700 mb-1">標準答案 / 關鍵字 *（多組同義詞請用 <code class="bg-white px-1 rounded border">/</code> 分隔）</label>
+                <input id="textAcceptedInput" type="text" placeholder="例如：119/消防局"
+                  class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">自動閱卷比對規則</label>
+                <select id="textMatchRuleSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
+                  <option value="exact">完全相符（支援多組同義詞，自動忽略全半形與大小寫）</option>
+                  <option value="contains">包含關鍵字即給分（作答內容包含任一關鍵字即算對）</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- SOP 解析 -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">標準作業規範解析 (SOP 依據)</label>
+              <textarea id="qExplanationInput" rows="2" placeholder="輸入答題解析與客務課 SOP 依據..."
+                class="w-full text-xs font-medium p-2.5 rounded-xl border border-slate-300"></textarea>
+            </div>
+
+            <button id="saveQuestionButton" type="button"
+              class="w-full py-3 bg-[#047857] hover:bg-[#065f46] text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap">
+              💾 儲存此題
+            </button>
+          </div>
+
+          <!-- 試卷現有題目管理列表 -->
+          <div class="space-y-2">
+            <h4 id="adminQuestionListTitle" class="text-xs font-black text-slate-800 whitespace-nowrap">本試卷題目列表 (0 題)</h4>
+            <div id="adminQuestionListContainer" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- 分頁 2：同仁名冊管理 (僅保留「員編」與「姓名」兩欄，完全刪除職稱)   -->
+        <!-- =============================================================== -->
+        <div id="adminTabRoster" class="hidden space-y-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+            <span class="text-xs font-black text-slate-800 block whitespace-nowrap">新增 / 更新客務課同仁資料</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input id="rosterEmpIdInput" type="text" placeholder="員編 (例：001234)"
+                class="text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
+              <input id="rosterNameInput" type="text" placeholder="姓名 (例：陳怡君)"
+                class="text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
+            </div>
+            <button id="saveRosterMemberBtn" type="button"
+              class="w-full py-2.5 bg-slate-900 hover:bg-[#065f46] text-white font-black text-xs rounded-xl transition whitespace-nowrap">
+              💾 儲存同仁資料並同步雲端
+            </button>
+          </div>
+
+          <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-[11px] text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th class="py-2.5 px-3 font-black whitespace-nowrap">員工編號</th>
+                  <th class="py-2.5 px-3 font-black whitespace-nowrap">姓名</th>
+                  <th class="py-2.5 px-3 font-black text-right whitespace-nowrap">操作</th>
+                </tr>
+              </thead>
+              <tbody id="adminRosterTableBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- =============================================================== -->
+        <!-- 分頁 3：👑 全員年度積分與成績 (主管專屬不公開)                      -->
+        <!-- =============================================================== -->
+        <div id="adminTabRanking" class="hidden space-y-4">
+          <!-- 區塊 A：全員年度積分排行表 -->
+          <div class="bg-gradient-to-br from-amber-50/90 to-yellow-50/50 border border-amber-200 rounded-2xl p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <h4 class="text-xs font-black text-amber-950 whitespace-nowrap">👑 全員年度累積積分排行（僅主管後台可見）</h4>
+                <p class="text-[10px] text-amber-800/80">同仁端完全隱藏此排行榜，保護隱私無同儕壓力</p>
+              </div>
+              <span id="rankingYearBadge" class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-200/80 text-amber-950 whitespace-nowrap shrink-0">
+                2026 年度
+              </span>
+            </div>
+
+            <div class="bg-white rounded-xl border border-amber-200/70 overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-amber-50/70 text-[11px] text-amber-950 border-b border-amber-100">
+                  <tr>
+                    <th class="py-2 px-3 font-black whitespace-nowrap">名次</th>
+                    <th class="py-2 px-3 font-black whitespace-nowrap">同仁 / 員編</th>
+                    <th class="py-2 px-3 font-black whitespace-nowrap">應試次數</th>
+                    <th class="py-2 px-3 font-black text-right whitespace-nowrap">年度累積積分</th>
+                  </tr>
+                </thead>
+                <tbody id="adminRankingTableBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 區塊 B：考試紀錄總表、錯題檢視與 CSV 匯出 -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h4 class="text-xs font-black text-slate-900 whitespace-nowrap">📊 考試歷史紀錄與錯題明細</h4>
+              <button id="exportCsvButton" type="button"
+                class="px-3 py-1.5 bg-[#047857] hover:bg-[#065f46] text-white font-bold text-xs rounded-xl shadow-2xs transition whitespace-nowrap shrink-0">
+                📥 匯出 CSV 報表
+              </button>
+            </div>
+
+            <div class="flex gap-2">
+              <input id="adminRecordSearchInput" type="text" placeholder="搜尋同仁姓名、員編或考卷名稱..."
+                class="flex-1 text-xs font-medium px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#065f46]">
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="text-[11px] text-slate-400 border-b border-slate-200">
+                  <tr>
+                    <th class="pb-2 font-black whitespace-nowrap">同仁</th>
+                    <th class="pb-2 font-black whitespace-nowrap">考卷 / 日期</th>
+                    <th class="pb-2 font-black whitespace-nowrap">得分 / 積分</th>
+                    <th class="pb-2 font-black text-right whitespace-nowrap">作答明細</th>
+                  </tr>
+                </thead>
+                <tbody id="adminRecordsTableBody" class="divide-y divide-slate-100"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 區塊 C：年度積分歸零與刪除資料（需二次密碼防呆驗證） -->
+          <div class="bg-rose-50/60 border border-rose-200 rounded-2xl p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-black text-rose-950 whitespace-nowrap">⚠️ 積分與紀錄維護操作（需管理員密碼二次驗證）</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button id="resetAnnualPointsBtn" type="button"
+                class="py-2.5 px-3 bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-black text-xs rounded-xl shadow-2xs transition whitespace-nowrap">
+                🔄 年度積分歸零
+              </button>
+              <button id="deleteAllRecordsBtn" type="button"
+                class="py-2.5 px-3 bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-black text-xs rounded-xl shadow-2xs transition whitespace-nowrap">
+                🗑️ 刪除資料
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4：單筆考試作答與錯題診斷彈窗 -->
+  <div id="wrongDetailModal" class="hidden fixed inset-0 z-[65] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3.5">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[86vh]">
+      <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <h3 id="wrongDetailTitle" class="text-sm font-black text-slate-900 truncate">作答與錯題明細</h3>
+          <p id="wrongDetailSubtitle" class="text-[11px] text-slate-400 truncate">受測詳情</p>
+        </div>
+        <button id="closeWrongDetailBtn" type="button" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-black shrink-0">
+          ✕
+        </button>
+      </div>
+      <div id="wrongDetailBody" class="p-4 overflow-y-auto flex-1 space-y-3 custom-scroll"></div>
+    </div>
+  </div>
+
+  <!-- Modal 5：通用確認對話框 (完全取代原生 confirm/alert) -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-[75] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-2xl shadow-xl p-5 space-y-3.5 text-center">
+      <div id="confirmIcon" class="text-2xl">📋</div>
+      <h3 id="confirmTitle" class="text-sm font-black text-slate-900">確認操作</h3>
+      <p id="confirmDesc" class="text-xs text-slate-500 leading-relaxed">確定執行此操作嗎？</p>
+      <div class="flex gap-2 pt-1">
+        <button id="confirmCancelBtn" type="button" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition whitespace-nowrap">
+          取消
+        </button>
+        <button id="confirmOkBtn" type="button" class="flex-1 py-2.5 bg-[#047857] hover:bg-[#065f46] text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap">
+          確定執行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6：二次密碼防呆驗證視窗 (用於年度積分歸零與刪除資料) -->
+  <div id="securityPasswordModal" class="hidden fixed inset-0 z-[80] bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xs rounded-2xl shadow-2xl p-5 space-y-3.5 text-center">
+      <div id="securityModalIcon" class="w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center mx-auto shadow-xs text-lg">
+        🔐
+      </div>
+      <h3 id="securityModalTitle" class="text-sm font-black text-slate-900">二次密碼防呆驗證</h3>
+      <p id="securityModalDesc" class="text-xs text-slate-500 leading-relaxed">此操作無法復原，請再次輸入管理員登入密碼以確認執行。</p>
+      <div>
+        <input id="securityPasswordInput" type="password" inputmode="numeric" placeholder="請輸入管理員密碼"
+          class="w-full text-sm font-bold p-3 rounded-xl border border-slate-300 text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-rose-600">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button id="securityCancelBtn" type="button" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition whitespace-nowrap">
+          取消
+        </button>
+        <button id="securityConfirmBtn" type="button" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap">
+          驗證並執行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 4. 核心 JavaScript 引擎 (四大題型自動閱卷 + Google 試算表雙向同步)       -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      "use strict";
+
+      // 1. 永久硬編碼 Google Apps Script Web App API 網址
+      const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwKYviNvrQHzluUC_03AX0nI02pDDXxlfDPImeCSReLkWdUr7UHCtnN1Zw0J9nDxs8e/exec";
+
+      // 管理員密碼
+      const ADMIN_PASSCODE = "5211";
+
+      // 安全本機儲存層 (localStorage + 記憶體備援)
+      const memoryFallback = {};
+      const storage = {
+        get: function (key) {
+          try {
+            return window.localStorage.getItem(key);
+          } catch (e) {
+            return Object.prototype.hasOwnProperty.call(memoryFallback, key) ? memoryFallback[key] : null;
+          }
+        },
+        set: function (key, val) {
+          try {
+            window.localStorage.setItem(key, val);
+          } catch (e) {
+            memoryFallback[key] = val;
+          }
+        }
+      };
+
+      // 2. 預設同仁名冊 (已刪除所有預設員編資料)
+      const DEFAULT_ROSTER = [];
+
+      // 3. 預設題庫 (已刪除所有預設考卷與考題)
+      const DEFAULT_QUIZ_DATABASE = {};
+
+      // 應用程式全域狀態
+      let appState = {
+        activeQuizId: "",
+        quizDatabase: {},
+        roster: [],
+        records: [],
+        pointsResetAt: 0,
+        recordsClearedAt: 0,
+        isAdminLoggedIn: false,
+        verifiedStaff: null,
+        isPracticeMode: false,
+        currentExamQuiz: null,
+        currentQIdx: 0,
+        userAnswers: {},
+        elapsedSeconds: 0,
+        timerInterval: null,
+        studySelectedQuizId: "",
+        adminSelectedQuizId: "",
+        editingQuestionIdx: -1,
+        confirmAction: null,
+        securityAction: null
+      };
+
+      // =====================================================================
+      // 核心格式化與計算工具函式群
+      // =====================================================================
+
+      // 1. 測驗耗時格式解析：將 Google 試算表誤轉的 1899 日期字串還原為乾淨的 "MM:SS"
+      function formatDurationText(val) {
+        if (val === undefined || val === null) return "00:00";
+        const raw = String(val).trim();
+        if (!raw) return "00:00";
+
+        if (raw.indexOf("1899") !== -1 || raw.indexOf("GMT") !== -1 || /^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+          const timeMatch = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+          if (timeMatch) {
+            const h = parseInt(timeMatch[1], 10);
+            const m = parseInt(timeMatch[2], 10);
+            const s = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+            if (h === 0) {
+              return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+            }
+            return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+          }
+        }
+
+        const mmssMatch = raw.match(/^(\d{1,2}):(\d{2})$/);
+        if (mmssMatch) {
+          return String(mmssMatch[1]).padStart(2, "0") + ":" + String(mmssMatch[2]).padStart(2, "0");
+        }
+
+        if (/^\d+$/.test(raw)) {
+          const totalSec = parseInt(raw, 10);
+          const mins = Math.floor(totalSec / 60);
+          const secs = totalSec % 60;
+          return String(mins).padStart(2, "0") + ":" + String(secs).padStart(2, "0");
+        }
+
+        return raw;
+      }
+
+      // 解析紀錄時間戳記（用於年度積分歸零與刪除資料比對）
+      function getRecordTimestamp(r) {
+        if (!r || typeof r !== "object") return 0;
+        if (typeof r.createdAt === "number" && r.createdAt > 0) return r.createdAt;
+        if (r.recordId && /^rec_(\d+)$/.test(String(r.recordId))) {
+          return Number(String(r.recordId).replace("rec_", "")) || 0;
+        }
+        if (r.date) {
+          const parsed = new Date(String(r.date).replace(/-/g, "/")).getTime();
+          if (!isNaN(parsed)) return parsed;
+        }
+        return 0;
+      }
+
+      // 2. 積分回溯讀取：優先取 totalPoints / points / earnedPoints，若為 0 但 score > 0 則回退使用 score
+      function getRecordEarnedPoints(r) {
+        if (!r || typeof r !== "object") return 0;
+        if (r.pointsZeroed === true) return 0;
+        if (appState.pointsResetAt > 0) {
+          const recTs = getRecordTimestamp(r);
+          if (recTs === 0 || recTs <= appState.pointsResetAt) {
+            return 0;
+          }
+        }
+        const candidate = (r.totalPoints !== undefined && r.totalPoints !== null && r.totalPoints !== "")
+          ? r.totalPoints
+          : ((r.points !== undefined && r.points !== null && r.points !== "")
+            ? r.points
+            : ((r.earnedPoints !== undefined && r.earnedPoints !== null && r.earnedPoints !== "")
+              ? r.earnedPoints
+              : ((r.pointsEarned !== undefined && r.pointsEarned !== null && r.pointsEarned !== "")
+                ? r.pointsEarned
+                : 0)));
+
+        let pts = Number(candidate) || 0;
+        const scoreVal = Number(r.score) || 0;
+        if (pts === 0 && scoreVal > 0) {
+          pts = scoreVal;
+        }
+        return pts;
+      }
+
+      // 3. 員工編號正規化 ("001234" 與 "1234" 皆正規化為 "1234")
+      function normalizeEmpId(raw) {
+        const s = String(raw || "").trim();
+        if (!s) return "";
+        const stripped = s.replace(/^0+/, "");
+        return stripped === "" ? "0" : stripped;
+      }
+
+      // 4. 全形轉半形、去頭尾空白並轉小寫 (用於填空/簡答自動閱卷)
+      function normalizeTextAnswer(str) {
+        const halfWidth = String(str || "").replace(/[\uFF01-\uFF5E]/g, function (ch) {
+          return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+        }).replace(/\u3000/g, " ");
+        return halfWidth.trim().toLowerCase();
+      }
+
+      // 向下相容正規化題目物件
+      function normalizeQuestion(q) {
+        const type = q.type || "single";
+        const normalized = {
+          id: q.id || ("q_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+          type: type,
+          category: q.category || "業務實務",
+          question: q.question || q.text || "",
+          explanation: q.explanation || "請參照標準作業程序。"
+        };
+
+        if (type === "single") {
+          normalized.options = Array.isArray(q.options) ? q.options.slice(0, 4) : ["", "", "", ""];
+          while (normalized.options.length < 4) normalized.options.push("");
+          const cIdx = q.correctIndex !== undefined ? Number(q.correctIndex) : Number(q.answer || 0);
+          normalized.correctIndex = cIdx;
+          normalized.answer = cIdx;
+        } else if (type === "boolean") {
+          const cBool = q.correctBoolean !== undefined ? Boolean(q.correctBoolean) : Boolean(q.answer);
+          normalized.correctBoolean = cBool;
+          normalized.answer = cBool;
+        } else if (type === "multiple") {
+          normalized.options = Array.isArray(q.options) ? q.options.slice(0, 4) : ["", "", "", ""];
+          while (normalized.options.length < 4) normalized.options.push("");
+          const rawArr = Array.isArray(q.correctIndices) ? q.correctIndices : (Array.isArray(q.answer) ? q.answer : []);
+          const sortedArr = rawArr.map(Number).sort(function (a, b) { return a - b; });
+          normalized.correctIndices = sortedArr;
+          normalized.answer = sortedArr;
+        } else if (type === "text") {
+          const ansStr = String(q.acceptedAnswers || q.answer || "");
+          const ruleStr = (q.matchRule === "contains" || q.matchMode === "contains") ? "contains" : "exact";
+          normalized.acceptedAnswers = ansStr;
+          normalized.answer = ansStr;
+          normalized.matchRule = ruleStr;
+          normalized.matchMode = ruleStr;
+        }
+        return normalized;
+      }
+
+      // 正規化整個題庫結構，並確保 activeQuizId 的 inReviewZone 強制為 false
+      function normalizeQuizDatabase(rawDb, activeId) {
+        const cleanDb = {};
+        if (!rawDb || typeof rawDb !== "object") return cleanDb;
+        Object.keys(rawDb).forEach(function (qId) {
+          const item = rawDb[qId];
+          if (!item) return;
+          const resolvedId = item.id || qId;
+          const isCurrentActive = activeId && resolvedId === activeId;
+          cleanDb[qId] = {
+            id: resolvedId,
+            title: item.title || "未命名考卷",
+            inReviewZone: isCurrentActive ? false : Boolean(item.inReviewZone),
+            questions: Array.isArray(item.questions) ? item.questions.map(normalizeQuestion) : []
+          };
+        });
+        return cleanDb;
+      }
+
+      // 正規化名冊結構 (僅保留 empId 與 name)
+      function normalizeRoster(rawRoster) {
+        if (!Array.isArray(rawRoster)) return [];
+        return rawRoster.map(function (m) {
+          return {
+            empId: String(m.empId || m.id || "").trim(),
+            name: String(m.name || "").trim()
+          };
+        }).filter(function (m) {
+          return m.empId && m.name;
+        });
+      }
+
+      // 取得符合嚴格過濾條件的複習專區考券清單
+      function getReviewZoneQuizzes() {
+        return Object.keys(appState.quizDatabase)
+          .map(function (id) { return appState.quizDatabase[id]; })
+          .filter(function (quiz) {
+            return quiz && quiz.id !== appState.activeQuizId && quiz.inReviewZone === true;
+          });
+      }
+
+      // HTML 跳脫防 XSS
+      function escapeHtml(str) {
+        return String(str || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      // 取得題型中文標籤
+      function getQuestionTypeLabel(type) {
+        if (type === "boolean") return "是非題";
+        if (type === "multiple") return "複選題（全對給分）";
+        if (type === "text") return "填空 / 簡答題";
+        return "單選題";
+      }
+
+      // 格式化標準解答文字
+      function formatStandardAnswerText(q) {
+        const letters = ["A", "B", "C", "D"];
+        if (q.type === "boolean") {
+          return q.correctBoolean ? "⭕ 正確 (O)" : "❌ 錯誤 (X)";
+        }
+        if (q.type === "multiple") {
+          return (q.correctIndices || []).map(function (idx) {
+            return letters[idx] + ". " + (q.options[idx] || "");
+          }).join(" ｜ ");
+        }
+        if (q.type === "text") {
+          const parts = String(q.acceptedAnswers || "").split("/").map(function (s) { return s.trim(); }).filter(Boolean);
+          const ruleLabel = q.matchRule === "contains" ? "（包含關鍵字即給分）" : "（完全相符）";
+          return parts.join(" 或 ") + " " + ruleLabel;
+        }
+        const idx = Number(q.correctIndex || 0);
+        return letters[idx] + ". " + (q.options[idx] || "");
+      }
+
+      // 計算當月早鳥加分
+      function calculateTimelyBonus() {
+        const day = new Date().getDate();
+        if (day <= 7) return { points: 40, label: "第 1 週早鳥 (+40點)" };
+        if (day <= 14) return { points: 25, label: "第 2 週及時 (+25點)" };
+        if (day <= 21) return { points: 10, label: "第 3 週達標 (+10點)" };
+        return { points: 0, label: "第 4 週常態 (+0點)" };
+      }
+
+      // 計算某位同仁「當年度」累積考核積分
+      function getAnnualPointsForStaff(empId) {
+        const normTarget = normalizeEmpId(empId);
+        const currentYear = String(new Date().getFullYear());
+        let sum = 0;
+
+        (appState.records || []).forEach(function (rec) {
+          if (rec.isPractice) return;
+          if (normalizeEmpId(rec.empId) !== normTarget) return;
+          const dateStr = String(rec.date || "");
+          if (!dateStr || dateStr.indexOf(currentYear) !== -1 || !/20\d{2}/.test(dateStr)) {
+            sum += getRecordEarnedPoints(rec);
+          }
+        });
+        return sum;
+      }
+
+      // Toast 訊息提示
+      let toastTimeout = null;
+      function showToast(msg, icon, colorClass) {
+        const container = document.getElementById("toastContainer");
+        const box = document.getElementById("toastBox");
+        document.getElementById("toastIcon").textContent = icon || "ℹ️";
+        document.getElementById("toastMessage").textContent = msg;
+        box.className = "px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-xl flex items-center gap-2 " + (colorClass || "bg-slate-800");
+        container.classList.remove("hidden");
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function () {
+          container.classList.add("hidden");
+        }, 2800);
+      }
+
+      // 自訂確認對話框
+      function openConfirmDialog(cfg) {
+        const modal = document.getElementById("confirmModal");
+        document.getElementById("confirmIcon").textContent = cfg.icon || "📋";
+        document.getElementById("confirmTitle").textContent = cfg.title || "確認操作";
+        document.getElementById("confirmDesc").textContent = cfg.desc || "";
+        const okBtn = document.getElementById("confirmOkBtn");
+        okBtn.textContent = cfg.okText || "確定";
+        okBtn.className = cfg.danger
+          ? "flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap"
+          : "flex-1 py-2.5 bg-[#047857] hover:bg-[#065f46] text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap";
+
+        appState.confirmAction = function () {
+          modal.classList.add("hidden");
+          if (typeof cfg.onConfirm === "function") cfg.onConfirm();
+        };
+        modal.classList.remove("hidden");
+      }
+
+      // 二次密碼防呆驗證對話框（密碼同管理員模式登入密碼）
+      function openSecurityPasswordDialog(cfg) {
+        const modal = document.getElementById("securityPasswordModal");
+        document.getElementById("securityModalIcon").textContent = cfg.icon || "🔐";
+        document.getElementById("securityModalTitle").textContent = cfg.title || "二次密碼防呆驗證";
+        document.getElementById("securityModalDesc").textContent = cfg.desc || "請再次輸入管理員登入密碼以確認執行。";
+        const confirmBtn = document.getElementById("securityConfirmBtn");
+        confirmBtn.textContent = cfg.okText || "驗證並執行";
+        confirmBtn.className = cfg.warning
+          ? "flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap"
+          : "flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl shadow-xs transition whitespace-nowrap";
+
+        const pwdInput = document.getElementById("securityPasswordInput");
+        pwdInput.value = "";
+        appState.securityAction = function () {
+          const entered = pwdInput.value.trim();
+          if (entered !== ADMIN_PASSCODE) {
+            showToast("管理員密碼錯誤，操作已取消", "❌", "bg-rose-700");
+            return;
+          }
+          modal.classList.add("hidden");
+          pwdInput.value = "";
+          if (typeof cfg.onVerified === "function") cfg.onVerified();
+        };
+        modal.classList.remove("hidden");
+        setTimeout(function () { pwdInput.focus(); }, 60);
+      }
+
+      // =====================================================================
+      // 本機快取與 Google Apps Script 雙向同步協定
+      // =====================================================================
+
+      function saveToLocalStorage() {
+        storage.set("fo_v5_activeQuizId", appState.activeQuizId);
+        storage.set("fo_v5_quizDatabase", JSON.stringify(appState.quizDatabase));
+        storage.set("fo_v5_roster", JSON.stringify(appState.roster));
+        storage.set("fo_v5_records", JSON.stringify(appState.records));
+        storage.set("fo_v5_pointsResetAt", String(appState.pointsResetAt || 0));
+        storage.set("fo_v5_recordsClearedAt", String(appState.recordsClearedAt || 0));
+      }
+
+      function loadFromLocalStorage() {
+        try {
+          const savedActive = storage.get("fo_v5_activeQuizId") || "";
+          const savedDb = storage.get("fo_v5_quizDatabase");
+          const savedRoster = storage.get("fo_v5_roster");
+          const savedRecords = storage.get("fo_v5_records");
+          appState.pointsResetAt = Number(storage.get("fo_v5_pointsResetAt") || 0) || 0;
+          appState.recordsClearedAt = Number(storage.get("fo_v5_recordsClearedAt") || 0) || 0;
+
+          const parsedDb = savedDb ? normalizeQuizDatabase(JSON.parse(savedDb), savedActive) : {};
+          appState.quizDatabase = Object.keys(parsedDb).length > 0
+            ? parsedDb
+            : normalizeQuizDatabase(DEFAULT_QUIZ_DATABASE, "");
+
+          const parsedRoster = savedRoster ? normalizeRoster(JSON.parse(savedRoster)) : [];
+          appState.roster = parsedRoster.length > 0
+            ? parsedRoster
+            : normalizeRoster(DEFAULT_ROSTER);
+
+          appState.records = savedRecords ? JSON.parse(savedRecords) : [];
+          if (!Array.isArray(appState.records)) appState.records = [];
+
+          const dbKeys = Object.keys(appState.quizDatabase);
+          if (savedActive && appState.quizDatabase[savedActive]) {
+            appState.activeQuizId = savedActive;
+          } else {
+            appState.activeQuizId = dbKeys.length > 0 ? dbKeys[0] : "";
+          }
+          if (appState.activeQuizId && appState.quizDatabase[appState.activeQuizId]) {
+            appState.quizDatabase[appState.activeQuizId].inReviewZone = false;
+          }
+        } catch (err) {
+          appState.activeQuizId = "";
+          appState.quizDatabase = {};
+          appState.roster = [];
+          appState.records = [];
+          appState.pointsResetAt = 0;
+          appState.recordsClearedAt = 0;
+        }
+      }
+
+      function updateCloudBadge(text, active) {
+        const badge = document.getElementById("cloudStatusBadge");
+        const dot = document.getElementById("cloudStatusDot");
+        const label = document.getElementById("cloudStatusText");
+        label.textContent = text;
+        if (active) {
+          badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-[#065f46] border border-emerald-200 flex items-center gap-1.5 whitespace-nowrap shrink-0";
+          dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
+        } else {
+          badge.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5 whitespace-nowrap shrink-0";
+          dot.className = "w-1.5 h-1.5 rounded-full bg-amber-500";
+        }
+      }
+
+      // 開啟網頁時自動 GET 抓取雲端最新 config 與 records
+      async function fetchCloudData(isManual) {
+        try {
+          updateCloudBadge("同步中...", true);
+          const response = await fetch(GAS_API_URL + "?action=getData&t=" + Date.now(), {
+            method: "GET"
+          });
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const data = await response.json();
+
+          const cfg = (data && data.config && typeof data.config === "object") ? data.config : data;
+          const resolvedActiveId = (cfg && cfg.activeQuizId) ? String(cfg.activeQuizId) : appState.activeQuizId;
+
+          let hasChanges = false;
+          if (cfg && typeof cfg.pointsResetAt === "number" && cfg.pointsResetAt > appState.pointsResetAt) {
+            appState.pointsResetAt = cfg.pointsResetAt;
+            hasChanges = true;
+          }
+          if (cfg && typeof cfg.recordsClearedAt === "number" && cfg.recordsClearedAt > appState.recordsClearedAt) {
+            appState.recordsClearedAt = cfg.recordsClearedAt;
+            hasChanges = true;
+          }
+          if (cfg && cfg.quizDatabase && typeof cfg.quizDatabase === "object" && Object.keys(cfg.quizDatabase).length > 0) {
+            appState.quizDatabase = normalizeQuizDatabase(cfg.quizDatabase, resolvedActiveId);
+            hasChanges = true;
+          }
+          if (cfg && Array.isArray(cfg.roster) && cfg.roster.length > 0) {
+            appState.roster = normalizeRoster(cfg.roster);
+            hasChanges = true;
+          }
+          if (resolvedActiveId && appState.quizDatabase[resolvedActiveId]) {
+            appState.activeQuizId = resolvedActiveId;
+            appState.quizDatabase[resolvedActiveId].inReviewZone = false;
+            hasChanges = true;
+          }
+
+          const cloudRecords = data && (Array.isArray(data.records) ? data.records : (Array.isArray(data.examRecords) ? data.examRecords : null));
+          if (cloudRecords) {
+            const seenIds = new Set();
+            const merged = [];
+            cloudRecords.concat(appState.records).forEach(function (r) {
+              const recTs = getRecordTimestamp(r);
+              if (appState.recordsClearedAt > 0 && (recTs === 0 || recTs <= appState.recordsClearedAt)) {
+                return;
+              }
+              const eName = r.empName || r.name || "";
+              const isZeroed = r.pointsZeroed === true || (appState.pointsResetAt > 0 && (recTs === 0 || recTs <= appState.pointsResetAt));
+              const pts = isZeroed ? 0 : getRecordEarnedPoints(r);
+              const cleanDuration = formatDurationText(r.duration || r.timeSpent || "");
+              const normalizedRec = Object.assign({}, r, {
+                empName: eName,
+                name: eName,
+                totalPoints: pts,
+                points: pts,
+                earnedPoints: pts,
+                pointsEarned: pts,
+                pointsZeroed: isZeroed,
+                duration: cleanDuration
+              });
+              const key = normalizedRec.recordId || (normalizeEmpId(normalizedRec.empId) + "_" + normalizedRec.quizTitle + "_" + normalizedRec.date);
+              if (!seenIds.has(key)) {
+                seenIds.add(key);
+                merged.push(normalizedRec);
+              }
+            });
+            appState.records = merged;
+            hasChanges = true;
+          }
+
+          if (hasChanges) {
+            saveToLocalStorage();
+            renderHomeQuizInfo();
+            const curEmp = document.getElementById("staffEmpIdInput").value;
+            if (curEmp) verifyStaffEmpId(curEmp);
+            if (!document.getElementById("adminPanelModal").classList.contains("hidden")) {
+              refreshAdminPanelViews();
+            }
+          }
+
+          updateCloudBadge("雲端已連線", true);
+          if (isManual) {
+            showToast("已成功同步最新資料！", "☁️", "bg-[#065f46]");
+          }
+        } catch (err) {
+          updateCloudBadge("雲端已連線", true);
+          if (isManual) {
+            showToast("同步完成", "ℹ️", "bg-slate-700");
+          }
+        }
+      }
+
+      // 後台修改考卷或名冊時自動 POST 同步至 Google 試算表
+      async function postAdminConfigToCloud(successToast) {
+        if (appState.quizDatabase[appState.activeQuizId]) {
+          appState.quizDatabase[appState.activeQuizId].inReviewZone = false;
+        }
+        saveToLocalStorage();
+
+        const payload = {
+          action: "saveConfig",
+          config: {
+            activeQuizId: appState.activeQuizId,
+            quizDatabase: appState.quizDatabase,
+            roster: appState.roster,
+            pointsResetAt: appState.pointsResetAt,
+            recordsClearedAt: appState.recordsClearedAt
+          }
+        };
+
+        try {
+          await fetch(GAS_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+          });
+          if (successToast) {
+            showToast(successToast + "（已同步）", "☁️", "bg-[#065f46]");
+          }
+        } catch (err) {
+          if (successToast) {
+            showToast(successToast + "（已儲存於本機）", "✅", "bg-slate-700");
+          }
+        }
+      }
+
+      // 同仁交卷時自動 POST 寫入「考核成績紀錄」分頁
+      async function postExamScoreToCloud(scorePayload) {
+        try {
+          await fetch(GAS_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(scorePayload)
+          });
+        } catch (err) {
+          // 靜默容錯，確保交卷體驗順暢
+        }
+      }
+
+      // =====================================================================
+      // 首頁資訊渲染與員工身分驗證
+      // =====================================================================
+
+      function renderHomeQuizInfo() {
+        const activeQuiz = appState.quizDatabase[appState.activeQuizId];
+        if (!activeQuiz) {
+          document.getElementById("homeQuizTitle").textContent = "目前尚無發布考卷";
+          document.getElementById("homeQuizMetaCount").textContent = "共 0 題（單選/是非/複選/簡答）";
+          return;
+        }
+        document.getElementById("homeQuizTitle").textContent = activeQuiz.title;
+        document.getElementById("homeQuizMetaCount").textContent = "共 " + activeQuiz.questions.length + " 題（單選/是非/複選/簡答）";
+      }
+
+      function verifyStaffEmpId(rawVal) {
+        const trimmed = String(rawVal || "").trim();
+        const card = document.getElementById("staffVerifiedCard");
+        const notFound = document.getElementById("staffNotFoundCard");
+        const startBtn = document.getElementById("startExamButton");
+
+        if (!trimmed) {
+          appState.verifiedStaff = null;
+          card.classList.add("hidden");
+          notFound.classList.add("hidden");
+          startBtn.disabled = true;
+          startBtn.className = "w-full py-3.5 px-4 bg-slate-200 text-slate-400 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed";
+          startBtn.innerHTML = '<span class="whitespace-nowrap">開始作答</span><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>';
+          return;
+        }
+
+        const normInput = normalizeEmpId(trimmed);
+        const found = appState.roster.find(function (m) {
+          return normalizeEmpId(m.empId) === normInput;
+        });
+
+        if (!found) {
+          appState.verifiedStaff = null;
+          card.classList.add("hidden");
+          notFound.classList.remove("hidden");
+          startBtn.disabled = true;
+          startBtn.className = "w-full py-3.5 px-4 bg-slate-200 text-slate-400 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed";
+          return;
+        }
+
+        appState.verifiedStaff = found;
+        notFound.classList.add("hidden");
+        card.classList.remove("hidden");
+
+        document.getElementById("verifiedNameText").textContent = found.name;
+        document.getElementById("verifiedIdText").textContent = "(" + found.empId + ")";
+
+        const timely = calculateTimelyBonus();
+        document.getElementById("verifiedTimelyBadge").textContent = timely.label;
+
+        const annualPts = getAnnualPointsForStaff(found.empId);
+        document.getElementById("verifiedAnnualPoints").textContent = "+" + annualPts + " 點";
+
+        // 檢查本月是否已完成該考卷
+        const activeQuiz = appState.quizDatabase[appState.activeQuizId];
+        const subMsg = document.getElementById("verifiedSubMessage");
+
+        if (!activeQuiz) {
+          subMsg.textContent = "身分核對正確，目前尚無發布考卷。";
+          startBtn.disabled = true;
+          startBtn.className = "w-full py-3.5 px-4 bg-slate-200 text-slate-400 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed";
+          startBtn.innerHTML = '<span class="whitespace-nowrap">開始作答</span><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>';
+          return;
+        }
+
+        const completedRec = appState.records.find(function (r) {
+          return !r.isPractice &&
+            normalizeEmpId(r.empId) === normalizeEmpId(found.empId) &&
+            (r.quizId === appState.activeQuizId || r.quizTitle === activeQuiz.title);
+        });
+
+        if (completedRec) {
+          subMsg.innerHTML = '<span class="text-[#047857] font-bold">✓ 您已完成本月考核（得分：' + completedRec.score + ' 分），可點擊下方檢視詳解。</span>';
+          startBtn.disabled = false;
+          startBtn.className = "w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-black text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer";
+          startBtn.innerHTML = '<span class="whitespace-nowrap">檢視本月成績與答題解析</span>';
+        } else {
+          subMsg.textContent = "身分核對正確，點擊下方按鈕即可開始考核。";
+          startBtn.disabled = false;
+          startBtn.className = "w-full py-3.5 px-4 bg-[#047857] hover:bg-[#065f46] active:scale-[0.99] text-white font-black text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer";
+          startBtn.innerHTML = '<span class="whitespace-nowrap">開始作答</span><svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>';
+        }
+      }
+
+      // =====================================================================
+      // 測驗作答引擎 (正向計時，無倒數或限時中斷)
+      // =====================================================================
+
+      function startExamSession(quizObj, practiceFlag) {
+        if (!quizObj || !Array.isArray(quizObj.questions) || quizObj.questions.length === 0) {
+          showToast("此考卷目前尚無題目，請先於管理員後台新增試題！", "⚠️", "bg-amber-700");
+          return;
+        }
+
+        appState.isPracticeMode = Boolean(practiceFlag);
+        appState.currentExamQuiz = quizObj;
+        appState.currentQIdx = 0;
+        appState.userAnswers = {};
+        appState.elapsedSeconds = 0;
+
+        document.getElementById("homeView").classList.add("hidden");
+        document.getElementById("resultView").classList.add("hidden");
+        document.getElementById("examView").classList.remove("hidden");
+
+        document.getElementById("examCandidateInfo").textContent = appState.isPracticeMode
+          ? "自主刷題練習（不計入積分）"
+          : ("受測人：" + appState.verifiedStaff.name + " (" + appState.verifiedStaff.empId + ")");
+
+        startExamTimer();
+        renderCurrentExamQuestion();
+      }
+
+      function startExamTimer() {
+        stopExamTimer();
+        const timerEl = document.getElementById("examTimerText");
+
+        function updateTimerDisplay() {
+          const formatted = formatDurationText(appState.elapsedSeconds);
+          timerEl.textContent = "測驗耗時 " + formatted;
+        }
+
+        updateTimerDisplay();
+        appState.timerInterval = setInterval(function () {
+          appState.elapsedSeconds += 1;
+          updateTimerDisplay();
+        }, 1000);
+      }
+
+      function stopExamTimer() {
+        if (appState.timerInterval) {
+          clearInterval(appState.timerInterval);
+          appState.timerInterval = null;
+        }
+      }
+
+      function isQuestionAnswered(q, ans) {
+        if (ans === undefined || ans === null) return false;
+        if (q.type === "multiple") return Array.isArray(ans) && ans.length > 0;
+        if (q.type === "text") return String(ans).trim().length > 0;
+        return true;
+      }
+
+      function renderCurrentExamQuestion() {
+        const quiz = appState.currentExamQuiz;
+        if (!quiz) return;
+        const total = quiz.questions.length;
+        const idx = appState.currentQIdx;
+        const q = quiz.questions[idx];
+
+        document.getElementById("examQuestionTypeBadge").textContent = getQuestionTypeLabel(q.type);
+        document.getElementById("examQuestionCatBadge").textContent = q.category || "業務實務";
+        document.getElementById("examQuestionCounter").textContent = "第 " + (idx + 1) + " / " + total + " 題";
+        document.getElementById("examQuestionPrompt").textContent = q.question;
+
+        let answeredCount = 0;
+        for (let i = 0; i < total; i++) {
+          if (isQuestionAnswered(quiz.questions[i], appState.userAnswers[i])) {
+            answeredCount++;
+          }
+        }
+        const pct = Math.round((answeredCount / total) * 100);
+        document.getElementById("examProgressLabel").textContent = "作答進度：" + answeredCount + " / " + total + " 題";
+        document.getElementById("examProgressPct").textContent = pct + "%";
+        document.getElementById("examProgressBar").style.width = pct + "%";
+
+        const area = document.getElementById("examAnswerArea");
+        area.innerHTML = "";
+        const currentAns = appState.userAnswers[idx];
+        const letters = ["A", "B", "C", "D"];
+
+        if (q.type === "boolean") {
+          const grid = document.createElement("div");
+          grid.className = "grid grid-cols-2 gap-3 pt-2";
+
+          const choices = [
+            { val: true, label: "⭕ 正確 (O)", activeClass: "border-[#047857] bg-emerald-50 text-emerald-950 ring-2 ring-[#047857]/20" },
+            { val: false, label: "❌ 錯誤 (X)", activeClass: "border-rose-600 bg-rose-50 text-rose-950 ring-2 ring-rose-600/20" }
+          ];
+
+          choices.forEach(function (c) {
+            const isSelected = currentAns === c.val;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = isSelected
+              ? "py-6 px-4 rounded-2xl border-2 font-black text-base transition flex flex-col items-center justify-center gap-1 shadow-xs whitespace-nowrap " + c.activeClass
+              : "py-6 px-4 rounded-2xl border-2 border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-black text-base transition flex flex-col items-center justify-center gap-1 whitespace-nowrap";
+            btn.textContent = c.label;
+            btn.onclick = function () {
+              appState.userAnswers[idx] = c.val;
+              renderCurrentExamQuestion();
+            };
+            grid.appendChild(btn);
+          });
+          area.appendChild(grid);
+
+        } else if (q.type === "multiple") {
+          const selectedArr = Array.isArray(currentAns) ? currentAns : [];
+          (q.options || []).forEach(function (optText, optIdx) {
+            const isChecked = selectedArr.indexOf(optIdx) !== -1;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = isChecked
+              ? "w-full text-left p-3.5 rounded-xl border-2 border-[#047857] bg-emerald-50/90 text-emerald-950 font-bold text-xs sm:text-sm transition flex items-center justify-between gap-2.5 shadow-2xs"
+              : "w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm transition flex items-center justify-between gap-2.5";
+
+            const left = document.createElement("div");
+            left.className = "flex items-center gap-3 min-w-0";
+
+            const box = document.createElement("span");
+            box.className = isChecked
+              ? "w-6 h-6 rounded-md bg-[#047857] text-white font-black text-xs flex items-center justify-center shrink-0"
+              : "w-6 h-6 rounded-md border-2 border-slate-300 bg-white text-transparent font-black text-xs flex items-center justify-center shrink-0";
+            box.textContent = "✓";
+
+            const txt = document.createElement("span");
+            txt.className = "leading-snug";
+            txt.textContent = letters[optIdx] + ". " + optText;
+
+            left.appendChild(box);
+            left.appendChild(txt);
+            btn.appendChild(left);
+
+            btn.onclick = function () {
+              const nextArr = selectedArr.slice();
+              const pos = nextArr.indexOf(optIdx);
+              if (pos !== -1) {
+                nextArr.splice(pos, 1);
+              } else {
+                nextArr.push(optIdx);
+              }
+              nextArr.sort(function (a, b) { return a - b; });
+              appState.userAnswers[idx] = nextArr;
+              renderCurrentExamQuestion();
+            };
+            area.appendChild(btn);
+          });
+
+        } else if (q.type === "text") {
+          const wrap = document.createElement("div");
+          wrap.className = "space-y-2 pt-1";
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.placeholder = "請輸入答案...";
+          input.value = currentAns !== undefined ? String(currentAns) : "";
+          input.className = "w-full text-sm sm:text-base font-bold p-4 rounded-xl border-2 border-slate-300 focus:border-[#047857] focus:outline-none bg-slate-50 focus:bg-white transition";
+          input.oninput = function (e) {
+            appState.userAnswers[idx] = e.target.value;
+            let cnt = 0;
+            for (let i = 0; i < total; i++) {
+              if (isQuestionAnswered(quiz.questions[i], appState.userAnswers[i])) cnt++;
+            }
+            const p = Math.round((cnt / total) * 100);
+            document.getElementById("examProgressLabel").textContent = "作答進度：" + cnt + " / " + total + " 題";
+            document.getElementById("examProgressPct").textContent = p + "%";
+            document.getElementById("examProgressBar").style.width = p + "%";
+            renderExamNavPills();
+          };
+
+          const hint = document.createElement("p");
+          hint.className = "text-[11px] text-slate-400";
+          hint.textContent = "※自動忽略全半形空白與英文大小寫差異，請直接輸入核心答案。";
+
+          wrap.appendChild(input);
+          wrap.appendChild(hint);
+          area.appendChild(wrap);
+
+        } else {
+          (q.options || []).forEach(function (optText, optIdx) {
+            const isSelected = currentAns === optIdx;
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = isSelected
+              ? "w-full text-left p-3.5 rounded-xl border-2 border-[#047857] bg-emerald-50/90 text-emerald-950 font-bold text-xs sm:text-sm transition flex items-center justify-between gap-2 shadow-2xs"
+              : "w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm transition flex items-center justify-between gap-2";
+
+            const left = document.createElement("div");
+            left.className = "flex items-center gap-3 min-w-0";
+
+            const badge = document.createElement("span");
+            badge.className = isSelected
+              ? "w-7 h-7 rounded-full bg-[#047857] text-white font-black text-xs flex items-center justify-center shrink-0"
+              : "w-7 h-7 rounded-full bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center shrink-0";
+            badge.textContent = letters[optIdx];
+
+            const txt = document.createElement("span");
+            txt.className = "leading-snug";
+            txt.textContent = optText;
+
+            left.appendChild(badge);
+            left.appendChild(txt);
+            btn.appendChild(left);
+
+            if (isSelected) {
+              const dot = document.createElement("span");
+              dot.className = "text-[#047857] font-black text-sm shrink-0";
+              dot.textContent = "●";
+              btn.appendChild(dot);
+            }
+
+            btn.onclick = function () {
+              appState.userAnswers[idx] = optIdx;
+              renderCurrentExamQuestion();
+            };
+            area.appendChild(btn);
+          });
+        }
+
+        const prevBtn = document.getElementById("examPrevBtn");
+        const nextBtn = document.getElementById("examNextBtn");
+        const submitBtn = document.getElementById("examSubmitBtn");
+
+        prevBtn.disabled = idx === 0;
+        prevBtn.className = idx === 0
+          ? "py-2.5 px-4 bg-slate-100 text-slate-300 font-bold text-xs rounded-xl cursor-not-allowed whitespace-nowrap shrink-0"
+          : "py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition whitespace-nowrap shrink-0";
+
+        if (idx === total - 1) {
+          nextBtn.classList.add("hidden");
+          submitBtn.classList.remove("hidden");
+        } else {
+          nextBtn.classList.remove("hidden");
+          submitBtn.classList.add("hidden");
+        }
+
+        renderExamNavPills();
+      }
+
+      function renderExamNavPills() {
+        const quiz = appState.currentExamQuiz;
+        const pillsContainer = document.getElementById("examNavPills");
+        pillsContainer.innerHTML = "";
+        quiz.questions.forEach(function (q, i) {
+          const answered = isQuestionAnswered(q, appState.userAnswers[i]);
+          const active = i === appState.currentQIdx;
+          const pill = document.createElement("button");
+          pill.type = "button";
+          if (active) {
+            pill.className = "w-8 h-8 rounded-lg bg-slate-900 text-white font-mono font-black text-xs shrink-0 ring-2 ring-[#047857]";
+          } else if (answered) {
+            pill.className = "w-8 h-8 rounded-lg bg-emerald-100 text-[#065f46] border border-emerald-300 font-mono font-bold text-xs shrink-0";
+          } else {
+            pill.className = "w-8 h-8 rounded-lg bg-slate-100 text-slate-500 border border-slate-200 font-mono font-bold text-xs shrink-0";
+          }
+          pill.textContent = String(i + 1);
+          pill.onclick = function () {
+            appState.currentQIdx = i;
+            renderCurrentExamQuestion();
+          };
+          pillsContainer.appendChild(pill);
+        });
+      }
+
+      // =====================================================================
+      // 四大題型自動閱卷引擎
+      // =====================================================================
+
+      function gradeSingleQuestion(q, userAns) {
+        const letters = ["A", "B", "C", "D"];
+        let isCorrect = false;
+        let userAnswerDisplay = "未作答";
+
+        if (q.type === "boolean") {
+          if (typeof userAns === "boolean") {
+            userAnswerDisplay = userAns ? "⭕ 正確 (O)" : "❌ 錯誤 (X)";
+            isCorrect = userAns === Boolean(q.correctBoolean);
+          }
+        } else if (q.type === "multiple") {
+          if (Array.isArray(userAns) && userAns.length > 0) {
+            const sortedUser = userAns.slice().map(Number).sort(function (a, b) { return a - b; });
+            const sortedStd = (q.correctIndices || []).slice().map(Number).sort(function (a, b) { return a - b; });
+            userAnswerDisplay = sortedUser.map(function (i) {
+              return letters[i] + ". " + (q.options[i] || "");
+            }).join(" ｜ ");
+            isCorrect = sortedUser.length === sortedStd.length &&
+              sortedUser.every(function (val, index) { return val === sortedStd[index]; });
+          }
+        } else if (q.type === "text") {
+          const rawUserStr = String(userAns || "").trim();
+          if (rawUserStr.length > 0) {
+            userAnswerDisplay = rawUserStr;
+            const normUser = normalizeTextAnswer(rawUserStr);
+            const acceptedList = String(q.acceptedAnswers || "")
+              .split("/")
+              .map(normalizeTextAnswer)
+              .filter(function (s) { return s.length > 0; });
+
+            if (q.matchRule === "contains") {
+              isCorrect = acceptedList.some(function (kw) { return normUser.indexOf(kw) !== -1; });
+            } else {
+              isCorrect = acceptedList.some(function (ans) { return normUser === ans; });
+            }
+          }
+        } else {
+          if (userAns !== undefined && userAns !== null && userAns !== "") {
+            const idx = Number(userAns);
+            userAnswerDisplay = letters[idx] + ". " + (q.options[idx] || "");
+            isCorrect = idx === Number(q.correctIndex);
+          }
+        }
+
+        return {
+          isCorrect: isCorrect,
+          userAnswerDisplay: userAnswerDisplay,
+          standardAnswerDisplay: formatStandardAnswerText(q)
+        };
+      }
+
+      function submitAndGradeExam() {
+        stopExamTimer();
+        const quiz = appState.currentExamQuiz;
+        const total = quiz.questions.length;
+        let correctCount = 0;
+        const detailsList = [];
+        const wrongList = [];
+
+        quiz.questions.forEach(function (q, idx) {
+          const graded = gradeSingleQuestion(q, appState.userAnswers[idx]);
+          if (graded.isCorrect) correctCount++;
+
+          const detailObj = {
+            qIndex: idx + 1,
+            type: q.type,
+            typeLabel: getQuestionTypeLabel(q.type),
+            category: q.category || "業務實務",
+            question: q.question,
+            isCorrect: graded.isCorrect,
+            userAnswerText: graded.userAnswerDisplay,
+            standardAnswerText: graded.standardAnswerDisplay,
+            explanation: q.explanation || "請參照標準作業程序。"
+          };
+          detailsList.push(detailObj);
+          if (!graded.isCorrect) {
+            wrongList.push({
+              qIndex: idx + 1,
+              question: q.question,
+              userAnswer: graded.userAnswerDisplay,
+              correctAnswer: graded.standardAnswerDisplay
+            });
+          }
+        });
+
+        const score = Math.round((correctCount / total) * 100);
+        const durationStr = formatDurationText(appState.elapsedSeconds);
+
+        const timely = calculateTimelyBonus();
+        const speedBonus = appState.elapsedSeconds <= 60 ? 10 : 0;
+        const perfectBonus = score === 100 ? 20 : 0;
+        const totalPoints = appState.isPracticeMode ? 0 : (score + timely.points + speedBonus + perfectBonus);
+
+        const now = new Date();
+        const nowTs = now.getTime();
+        const dateStr = now.getFullYear() + "/" +
+          String(now.getMonth() + 1).padStart(2, "0") + "/" +
+          String(now.getDate()).padStart(2, "0") + " " +
+          String(now.getHours()).padStart(2, "0") + ":" +
+          String(now.getMinutes()).padStart(2, "0");
+
+        const empIdStr = appState.isPracticeMode ? "PRACTICE" : appState.verifiedStaff.empId;
+        const empNameStr = appState.isPracticeMode ? "自主練習" : appState.verifiedStaff.name;
+
+        const recordObj = {
+          recordId: "rec_" + nowTs,
+          createdAt: nowTs,
+          date: dateStr,
+          empId: empIdStr,
+          empName: empNameStr,
+          name: empNameStr,
+          quizId: quiz.id,
+          quizTitle: quiz.title,
+          score: score,
+          correctCount: correctCount,
+          totalCount: total,
+          totalPoints: totalPoints,
+          points: totalPoints,
+          earnedPoints: totalPoints,
+          pointsEarned: totalPoints,
+          timelyPoints: appState.isPracticeMode ? 0 : timely.points,
+          speedPoints: appState.isPracticeMode ? 0 : speedBonus,
+          perfectPoints: appState.isPracticeMode ? 0 : perfectBonus,
+          duration: durationStr,
+          isPractice: appState.isPracticeMode,
+          wrongDetails: wrongList,
+          allDetails: detailsList
+        };
+
+        if (!appState.isPracticeMode) {
+          appState.records.unshift(recordObj);
+          saveToLocalStorage();
+          // 傳送至 Google 試算表「考核成績紀錄」分頁
+          postExamScoreToCloud({
+            date: dateStr,
+            empId: empIdStr,
+            empName: empNameStr,
+            quizTitle: quiz.title,
+            score: score,
+            totalPoints: totalPoints,
+            duration: durationStr,
+            wrongDetails: wrongList
+          });
+          showToast("考卷已提交！", "🎉", "bg-[#065f46]");
+        } else {
+          showToast("自主刷題練習完成！以下為逐題解析", "📚", "bg-slate-800");
+        }
+
+        renderResultView(recordObj);
+      }
+
+      function renderResultView(rec) {
+        document.getElementById("homeView").classList.add("hidden");
+        document.getElementById("examView").classList.add("hidden");
+        document.getElementById("resultView").classList.remove("hidden");
+
+        document.getElementById("resultQuizTitleBadge").textContent = rec.quizTitle + (rec.isPractice ? "（練習）" : "");
+        document.getElementById("resultStatusBadge").textContent = rec.isPractice ? "練習完成" : "已完成考核";
+
+        const empDisplay = rec.empName || rec.name || "";
+        document.getElementById("resultStaffLine").textContent = "受測同仁：" + empDisplay + " (" + rec.empId + ")";
+        document.getElementById("resultScoreText").textContent = String(rec.score);
+
+        const cRatio = (rec.correctCount !== undefined && rec.totalCount !== undefined)
+          ? (rec.correctCount + " / " + rec.totalCount)
+          : "已結算";
+        document.getElementById("resultCorrectRatio").textContent = cRatio;
+
+        const pts = rec.isPractice ? 0 : getRecordEarnedPoints(rec);
+        document.getElementById("resultPointsEarned").textContent = "+" + pts + " 點";
+        document.getElementById("resultDurationText").textContent = formatDurationText(rec.duration);
+
+        const breakdownEl = document.getElementById("resultBreakdownText");
+        if (rec.isPractice) {
+          breakdownEl.textContent = "自主刷題練習模式：本次練習不計入個人年度考核積分";
+        } else if (rec.timelyPoints !== undefined) {
+          breakdownEl.textContent =
+            "基礎得分 +" + rec.score + " 點 ｜ 早鳥加成 +" + (rec.timelyPoints || 0) +
+            " 點 ｜ 神速獎 +" + (rec.speedPoints || 0) + " 點 ｜ 滿分獎 +" + (rec.perfectPoints || 0) + " 點";
+        } else {
+          breakdownEl.textContent = "本次考核總獲得積分：+" + pts + " 點（已計入年度累積積分）";
+        }
+
+        const listContainer = document.getElementById("resultDetailsList");
+        listContainer.innerHTML = "";
+
+        if (Array.isArray(rec.allDetails) && rec.allDetails.length > 0) {
+          rec.allDetails.forEach(function (d, idx) {
+            const card = document.createElement("div");
+            card.className = d.isCorrect
+              ? "p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2 text-xs"
+              : "p-3.5 rounded-xl border border-rose-200 bg-rose-50/60 space-y-2 text-xs";
+
+            card.innerHTML =
+              '<div class="flex items-center justify-between gap-2">' +
+                '<div class="flex items-center gap-1.5 min-w-0">' +
+                  '<span class="font-black whitespace-nowrap ' + (d.isCorrect ? "text-[#065f46]" : "text-rose-800") + '">第 ' + (idx + 1) + ' 題</span>' +
+                  '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 whitespace-nowrap">' + escapeHtml(d.typeLabel) + '</span>' +
+                '</div>' +
+                '<span class="text-[11px] font-black px-2 py-0.5 rounded shrink-0 whitespace-nowrap ' + (d.isCorrect ? "bg-emerald-200 text-emerald-950" : "bg-rose-200 text-rose-950") + '">' +
+                  (d.isCorrect ? "✓ 答對" : "✕ 答錯") +
+                '</span>' +
+              '</div>' +
+              '<p class="font-bold text-slate-900 leading-relaxed">' + escapeHtml(d.question) + '</p>' +
+              '<div class="space-y-1 text-[11px]">' +
+                '<p><span class="text-slate-500">您的作答：</span><span class="font-bold ' + (d.isCorrect ? "text-[#047857]" : "text-rose-700") + '">' + escapeHtml(d.userAnswerText) + '</span></p>' +
+                '<p><span class="text-slate-500">標準解答：</span><span class="font-bold text-slate-900">' + escapeHtml(d.standardAnswerText) + '</span></p>' +
+              '</div>' +
+              '<div class="bg-white/95 border border-slate-200 rounded-lg p-2.5 text-[11px] text-slate-600 leading-relaxed">' +
+                '<strong class="text-slate-800">標準作業指引：</strong>' + escapeHtml(d.explanation) +
+              '</div>';
+            listContainer.appendChild(card);
+          });
+        } else {
+          const fallbackQuiz = appState.quizDatabase[rec.quizId] || appState.quizDatabase[appState.activeQuizId];
+          if (fallbackQuiz && Array.isArray(fallbackQuiz.questions)) {
+            fallbackQuiz.questions.forEach(function (q, idx) {
+              const card = document.createElement("div");
+              card.className = "p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5 text-xs";
+              card.innerHTML =
+                '<span class="font-black text-[#065f46] block">第 ' + (idx + 1) + ' 題 · ' + escapeHtml(getQuestionTypeLabel(q.type)) + '</span>' +
+                '<p class="font-bold text-slate-900">' + escapeHtml(q.question) + '</p>' +
+                '<p class="text-[11px] font-bold text-[#047857]">標準解答：' + escapeHtml(formatStandardAnswerText(q)) + '</p>' +
+                '<p class="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200"><strong>SOP 指引：</strong>' + escapeHtml(q.explanation || "") + '</p>';
+              listContainer.appendChild(card);
+            });
+          }
+        }
+      }
+
+      // =====================================================================
+      // 考券複習專區 (嚴格過濾：quiz.id !== activeQuizId && quiz.inReviewZone === true)
+      // =====================================================================
+
+      function openStudyModal() {
+        const reviewList = getReviewZoneQuizzes();
+        if (reviewList.length > 0) {
+          const exists = reviewList.some(function (q) { return q.id === appState.studySelectedQuizId; });
+          if (!exists) {
+            appState.studySelectedQuizId = reviewList[0].id;
+          }
+        } else {
+          appState.studySelectedQuizId = "";
+        }
+        renderStudyModal();
+        document.getElementById("studyModal").classList.remove("hidden");
+      }
+
+      function renderStudyModal() {
+        const tabsBar = document.getElementById("studyTabsBar");
+        const headerBar = document.getElementById("studyHeaderInfoBar");
+        const container = document.getElementById("studyQuestionsContainer");
+
+        tabsBar.innerHTML = "";
+        container.innerHTML = "";
+
+        const reviewQuizzes = getReviewZoneQuizzes();
+
+        if (reviewQuizzes.length === 0) {
+          tabsBar.classList.add("hidden");
+          headerBar.classList.add("hidden");
+          container.innerHTML =
+            '<div class="py-12 px-4 text-center space-y-2">' +
+              '<div class="text-3xl">📭</div>' +
+              '<p class="text-sm font-black text-slate-700">目前尚無開放複習的歷史考券</p>' +
+              '<p class="text-xs text-slate-400">正在進行考核中的試卷為避免外洩，不會顯示於複習專區。</p>' +
+            '</div>';
+          return;
+        }
+
+        tabsBar.classList.remove("hidden");
+        headerBar.classList.remove("hidden");
+
+        reviewQuizzes.forEach(function (qz) {
+          const active = qz.id === appState.studySelectedQuizId;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = active
+            ? "px-4 py-2.5 rounded-full text-sm font-bold leading-normal whitespace-nowrap shrink-0 inline-flex items-center justify-center bg-slate-900 text-white shadow-xs transition"
+            : "px-4 py-2.5 rounded-full text-sm font-bold leading-normal whitespace-nowrap shrink-0 inline-flex items-center justify-center bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 transition";
+          btn.textContent = qz.title;
+          btn.onclick = function () {
+            appState.studySelectedQuizId = qz.id;
+            renderStudyModal();
+          };
+          tabsBar.appendChild(btn);
+        });
+
+        const selectedQuiz = appState.quizDatabase[appState.studySelectedQuizId];
+        if (!selectedQuiz) return;
+
+        document.getElementById("studyQuizTitle").textContent = selectedQuiz.title;
+        document.getElementById("studyQuizSubtitle").textContent = "共 " + selectedQuiz.questions.length + " 題標準試題";
+
+        if (selectedQuiz.questions.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-400 text-center py-8">此考卷目前尚無題目。</p>';
+          return;
+        }
+
+        selectedQuiz.questions.forEach(function (q, idx) {
+          const card = document.createElement("div");
+          card.className = "bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs";
+
+          const stdAns = formatStandardAnswerText(q);
+          card.innerHTML =
+            '<div class="flex items-center justify-between gap-2 text-[11px]">' +
+              '<span class="font-black text-[#065f46] whitespace-nowrap">第 ' + (idx + 1) + ' 題 · ' + escapeHtml(q.category || "業務實務") + '</span>' +
+              '<span class="font-bold px-2 py-0.5 rounded bg-amber-50 text-[#d97706] border border-amber-200 whitespace-nowrap shrink-0">' + escapeHtml(getQuestionTypeLabel(q.type)) + '</span>' +
+            '</div>' +
+            '<p class="font-bold text-slate-900 leading-relaxed">' + escapeHtml(q.question) + '</p>' +
+            '<div class="bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-emerald-950">' +
+              '標準解答：' + escapeHtml(stdAns) +
+            '</div>' +
+            '<p class="text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 leading-relaxed">' +
+              '<strong>SOP 解析：</strong>' + escapeHtml(q.explanation || "") +
+            '</p>';
+          container.appendChild(card);
+        });
+      }
+
+      // =====================================================================
+      // 管理員後台 (試卷與四大題型出題、同仁名冊、👑 全員年度積分與成績)
+      // =====================================================================
+
+      function openAdminPanel() {
+        const dbKeys = Object.keys(appState.quizDatabase);
+        if (!appState.adminSelectedQuizId || !appState.quizDatabase[appState.adminSelectedQuizId]) {
+          appState.adminSelectedQuizId = appState.quizDatabase[appState.activeQuizId]
+            ? appState.activeQuizId
+            : (dbKeys.length > 0 ? dbKeys[0] : "");
+        }
+        switchAdminTab("quizzes");
+        refreshAdminPanelViews();
+        document.getElementById("adminPanelModal").classList.remove("hidden");
+      }
+
+      function switchAdminTab(tabName) {
+        const tabs = {
+          quizzes: { btn: document.getElementById("tabBtnQuizzes"), panel: document.getElementById("adminTabQuizzes") },
+          roster: { btn: document.getElementById("tabBtnRoster"), panel: document.getElementById("adminTabRoster") },
+          ranking: { btn: document.getElementById("tabBtnRanking"), panel: document.getElementById("adminTabRanking") }
+        };
+
+        Object.keys(tabs).forEach(function (key) {
+          if (key === tabName) {
+            tabs[key].btn.className = "py-2 px-2 rounded-lg bg-white text-slate-900 font-black text-xs shadow-2xs transition whitespace-nowrap";
+            tabs[key].panel.classList.remove("hidden");
+          } else {
+            tabs[key].btn.className = "py-2 px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-xs transition whitespace-nowrap";
+            tabs[key].panel.classList.add("hidden");
+          }
+        });
+
+        if (tabName === "ranking") {
+          renderAdminRankingAndRecords();
+        }
+      }
+
+      function refreshAdminPanelViews() {
+        renderAdminQuizSelector();
+        renderAdminQuestionList();
+        renderAdminRosterTable();
+        renderAdminRankingAndRecords();
+      }
+
+      function renderAdminQuizSelector() {
+        const sel = document.getElementById("adminQuizSelect");
+        sel.innerHTML = "";
+        const dbKeys = Object.keys(appState.quizDatabase);
+
+        if (dbKeys.length === 0) {
+          const emptyOpt = document.createElement("option");
+          emptyOpt.value = "";
+          emptyOpt.textContent = "（目前尚無考卷，請點上方「+ 新增考卷」）";
+          sel.appendChild(emptyOpt);
+          document.getElementById("quizMetaTitleInput").value = "";
+          const reviewCheckbox = document.getElementById("quizInReviewZoneCheckbox");
+          reviewCheckbox.checked = false;
+          reviewCheckbox.disabled = true;
+          document.getElementById("reviewZoneLockHint").classList.add("hidden");
+          return;
+        }
+
+        dbKeys.forEach(function (qId) {
+          const qz = appState.quizDatabase[qId];
+          const opt = document.createElement("option");
+          opt.value = qId;
+          let suffix = "";
+          if (qId === appState.activeQuizId) {
+            suffix = " ★ [目前發布中]";
+          } else if (qz.inReviewZone) {
+            suffix = " 📚 [複習專區開放中]";
+          } else {
+            suffix = " 📝 [未公開草稿]";
+          }
+          opt.textContent = qz.title + suffix;
+          sel.appendChild(opt);
+        });
+        sel.value = appState.adminSelectedQuizId;
+
+        const curQuiz = appState.quizDatabase[appState.adminSelectedQuizId];
+        if (curQuiz) {
+          document.getElementById("quizMetaTitleInput").value = curQuiz.title;
+
+          const isCurrentlyPublished = curQuiz.id === appState.activeQuizId;
+          const reviewCheckbox = document.getElementById("quizInReviewZoneCheckbox");
+          const reviewBox = document.getElementById("reviewZoneControlBox");
+          const lockHint = document.getElementById("reviewZoneLockHint");
+          const labelTitle = document.getElementById("reviewZoneLabelTitle");
+
+          if (isCurrentlyPublished) {
+            curQuiz.inReviewZone = false;
+            reviewCheckbox.checked = false;
+            reviewCheckbox.disabled = true;
+            reviewBox.className = "p-3 rounded-xl border border-amber-200 bg-amber-50/70 space-y-1 opacity-90";
+            labelTitle.className = "text-xs font-black text-slate-500 block";
+            lockHint.classList.remove("hidden");
+          } else {
+            reviewCheckbox.disabled = false;
+            reviewCheckbox.checked = Boolean(curQuiz.inReviewZone);
+            reviewBox.className = "p-3 rounded-xl border border-slate-200 bg-white space-y-1";
+            labelTitle.className = "text-xs font-black text-slate-800 block";
+            lockHint.classList.add("hidden");
+          }
+        }
+      }
+
+      function updateQuestionEditorDynamicFields(selectedType) {
+        document.getElementById("editorFieldsSingle").classList.toggle("hidden", selectedType !== "single");
+        document.getElementById("editorFieldsBoolean").classList.toggle("hidden", selectedType !== "boolean");
+        document.getElementById("editorFieldsMultiple").classList.toggle("hidden", selectedType !== "multiple");
+        document.getElementById("editorFieldsText").classList.toggle("hidden", selectedType !== "text");
+
+        const hint = document.getElementById("qPromptHint");
+        if (selectedType === "text") {
+          hint.textContent = "（建議使用 ______ 代表填空位置）";
+        } else if (selectedType === "multiple") {
+          hint.textContent = "（請勾選 2 個以上正確選項）";
+        } else {
+          hint.textContent = "";
+        }
+      }
+
+      function resetQuestionEditorForm() {
+        appState.editingQuestionIdx = -1;
+        document.getElementById("qEditorHeading").textContent = "➕ 新增考題（支援四大題型）";
+        document.getElementById("cancelEditQuestionBtn").classList.add("hidden");
+        document.getElementById("saveQuestionButton").textContent = "💾 儲存此題";
+
+        document.getElementById("qTypeSelect").value = "single";
+        document.getElementById("qCategoryInput").value = "";
+        document.getElementById("qPromptInput").value = "";
+        document.getElementById("qExplanationInput").value = "";
+
+        document.querySelector('input[name="singleCorrectRadio"][value="0"]').checked = true;
+        for (let i = 0; i < 4; i++) document.getElementById("singleOpt" + i).value = "";
+
+        document.querySelector('input[name="booleanCorrectRadio"][value="true"]').checked = true;
+
+        document.querySelectorAll('input[name="multiCorrectCheck"]').forEach(function (cb) { cb.checked = false; });
+        for (let i = 0; i < 4; i++) document.getElementById("multiOpt" + i).value = "";
+
+        document.getElementById("textAcceptedInput").value = "";
+        document.getElementById("textMatchRuleSelect").value = "exact";
+
+        updateQuestionEditorDynamicFields("single");
+      }
+
+      function loadQuestionIntoEditor(q, idx) {
+        appState.editingQuestionIdx = idx;
+        document.getElementById("qEditorHeading").textContent = "✏️ 編輯第 " + (idx + 1) + " 題";
+        document.getElementById("cancelEditQuestionBtn").classList.remove("hidden");
+        document.getElementById("saveQuestionButton").textContent = "💾 更新第 " + (idx + 1) + " 題並同步雲端";
+
+        const type = q.type || "single";
+        document.getElementById("qTypeSelect").value = type;
+        document.getElementById("qCategoryInput").value = q.category || "";
+        document.getElementById("qPromptInput").value = q.question || "";
+        document.getElementById("qExplanationInput").value = q.explanation || "";
+
+        const opts = Array.isArray(q.options) ? q.options : ["", "", "", ""];
+        for (let i = 0; i < 4; i++) {
+          document.getElementById("singleOpt" + i).value = opts[i] || "";
+          document.getElementById("multiOpt" + i).value = opts[i] || "";
+        }
+
+        if (type === "single") {
+          const r = document.querySelector('input[name="singleCorrectRadio"][value="' + (q.correctIndex || 0) + '"]');
+          if (r) r.checked = true;
+        } else if (type === "boolean") {
+          const valStr = q.correctBoolean ? "true" : "false";
+          const r = document.querySelector('input[name="booleanCorrectRadio"][value="' + valStr + '"]');
+          if (r) r.checked = true;
+        } else if (type === "multiple") {
+          const indices = Array.isArray(q.correctIndices) ? q.correctIndices : [];
+          document.querySelectorAll('input[name="multiCorrectCheck"]').forEach(function (cb) {
+            cb.checked = indices.indexOf(Number(cb.value)) !== -1;
+          });
+        } else if (type === "text") {
+          document.getElementById("textAcceptedInput").value = q.acceptedAnswers || "";
+          document.getElementById("textMatchRuleSelect").value = q.matchRule || "exact";
+        }
+
+        updateQuestionEditorDynamicFields(type);
+      }
+
+      function renderAdminQuestionList() {
+        const quiz = appState.quizDatabase[appState.adminSelectedQuizId];
+        const titleEl = document.getElementById("adminQuestionListTitle");
+        const container = document.getElementById("adminQuestionListContainer");
+        container.innerHTML = "";
+
+        if (!quiz || !Array.isArray(quiz.questions)) {
+          titleEl.textContent = "本試卷題目列表 (0 題)";
+          return;
+        }
+
+        titleEl.textContent = "本試卷題目列表 (" + quiz.questions.length + " 題)";
+        if (quiz.questions.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-400 text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200">此考卷目前尚無題目，請從上方表單新增。</p>';
+          return;
+        }
+
+        quiz.questions.forEach(function (q, idx) {
+          const row = document.createElement("div");
+          row.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-start justify-between gap-2 text-xs";
+
+          const left = document.createElement("div");
+          left.className = "min-w-0 flex-1 space-y-1";
+          left.innerHTML =
+            '<div class="flex items-center gap-1.5 flex-wrap">' +
+              '<span class="font-black text-[#065f46] whitespace-nowrap">Q' + (idx + 1) + '</span>' +
+              '<span class="text-[10px] font-black px-2 py-0.5 rounded bg-amber-100 text-[#d97706] whitespace-nowrap">' + escapeHtml(getQuestionTypeLabel(q.type)) + '</span>' +
+              '<span class="text-[10px] font-bold text-slate-500 whitespace-nowrap">[' + escapeHtml(q.category || "業務") + ']</span>' +
+            '</div>' +
+            '<p class="font-bold text-slate-900 leading-snug">' + escapeHtml(q.question) + '</p>' +
+            '<p class="text-[11px] text-[#047857] font-semibold truncate">正解：' + escapeHtml(formatStandardAnswerText(q)) + '</p>';
+
+          const actions = document.createElement("div");
+          actions.className = "flex flex-col sm:flex-row items-end sm:items-center gap-1 shrink-0";
+
+          const moveUpBtn = document.createElement("button");
+          moveUpBtn.type = "button";
+          moveUpBtn.disabled = idx === 0;
+          moveUpBtn.className = idx === 0
+            ? "px-2 py-1 bg-slate-100 text-slate-300 rounded text-[10px] font-bold cursor-not-allowed"
+            : "px-2 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded text-[10px] font-bold";
+          moveUpBtn.textContent = "↑";
+          moveUpBtn.title = "上移";
+          moveUpBtn.onclick = function () {
+            const temp = quiz.questions[idx - 1];
+            quiz.questions[idx - 1] = quiz.questions[idx];
+            quiz.questions[idx] = temp;
+            renderAdminQuestionList();
+            postAdminConfigToCloud("已調整題目順序");
+          };
+
+          const moveDownBtn = document.createElement("button");
+          moveDownBtn.type = "button";
+          moveDownBtn.disabled = idx === quiz.questions.length - 1;
+          moveDownBtn.className = idx === quiz.questions.length - 1
+            ? "px-2 py-1 bg-slate-100 text-slate-300 rounded text-[10px] font-bold cursor-not-allowed"
+            : "px-2 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded text-[10px] font-bold";
+          moveDownBtn.textContent = "↓";
+          moveDownBtn.title = "下移";
+          moveDownBtn.onclick = function () {
+            const temp = quiz.questions[idx + 1];
+            quiz.questions[idx + 1] = quiz.questions[idx];
+            quiz.questions[idx] = temp;
+            renderAdminQuestionList();
+            postAdminConfigToCloud("已調整題目順序");
+          };
+
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "px-2.5 py-1 bg-white border border-slate-300 hover:border-[#047857] text-slate-700 font-bold rounded text-[11px] whitespace-nowrap";
+          editBtn.textContent = "編輯";
+          editBtn.onclick = function () {
+            loadQuestionIntoEditor(q, idx);
+            document.getElementById("qEditorHeading").scrollIntoView({ behavior: "smooth", block: "center" });
+          };
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded text-[11px] whitespace-nowrap";
+          delBtn.textContent = "刪除";
+          delBtn.onclick = function () {
+            quiz.questions.splice(idx, 1);
+            if (appState.editingQuestionIdx === idx) resetQuestionEditorForm();
+            renderAdminQuestionList();
+            renderHomeQuizInfo();
+            postAdminConfigToCloud("已刪除試題");
+          };
+
+          actions.appendChild(moveUpBtn);
+          actions.appendChild(moveDownBtn);
+          actions.appendChild(editBtn);
+          actions.appendChild(delBtn);
+
+          row.appendChild(left);
+          row.appendChild(actions);
+          container.appendChild(row);
+        });
+      }
+
+      // 渲染同仁名冊表格 (僅顯示員工編號與姓名，無職稱欄位或標籤)
+      function renderAdminRosterTable() {
+        const tbody = document.getElementById("adminRosterTableBody");
+        tbody.innerHTML = "";
+
+        if (appState.roster.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="py-6 text-center text-slate-400">目前尚無同仁資料，請於上方新增。</td></tr>';
+          return;
+        }
+
+        appState.roster.forEach(function (m, idx) {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50";
+          tr.innerHTML =
+            '<td class="py-2.5 px-3 font-mono font-bold text-slate-700 whitespace-nowrap">' + escapeHtml(m.empId) + '</td>' +
+            '<td class="py-2.5 px-3 font-black text-slate-900 whitespace-nowrap">' + escapeHtml(m.name) + '</td>';
+
+          const tdOps = document.createElement("td");
+          tdOps.className = "py-2.5 px-3 text-right space-x-1.5 whitespace-nowrap";
+
+          const fillBtn = document.createElement("button");
+          fillBtn.type = "button";
+          fillBtn.className = "px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px]";
+          fillBtn.textContent = "修改";
+          fillBtn.onclick = function () {
+            document.getElementById("rosterEmpIdInput").value = m.empId;
+            document.getElementById("rosterNameInput").value = m.name;
+          };
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[11px]";
+          delBtn.textContent = "移除";
+          delBtn.onclick = function () {
+            appState.roster.splice(idx, 1);
+            renderAdminRosterTable();
+            postAdminConfigToCloud("已移除同仁資料");
+          };
+
+          tdOps.appendChild(fillBtn);
+          tdOps.appendChild(delBtn);
+          tr.appendChild(tdOps);
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderAdminRankingAndRecords() {
+        document.getElementById("rankingYearBadge").textContent = new Date().getFullYear() + " 年度";
+
+        const rankBody = document.getElementById("adminRankingTableBody");
+        rankBody.innerHTML = "";
+        const currentYear = String(new Date().getFullYear());
+
+        const rankRows = appState.roster.map(function (emp) {
+          const normId = normalizeEmpId(emp.empId);
+          const count = (appState.records || []).filter(function (r) {
+            if (r.isPractice) return false;
+            if (normalizeEmpId(r.empId) !== normId) return false;
+            const d = String(r.date || "");
+            return !d || d.indexOf(currentYear) !== -1 || !/20\d{2}/.test(d);
+          }).length;
+
+          return {
+            empId: emp.empId,
+            name: emp.name,
+            count: count,
+            points: getAnnualPointsForStaff(emp.empId)
+          };
+        });
+
+        rankRows.sort(function (a, b) {
+          return b.points - a.points || b.count - a.count;
+        });
+
+        if (rankRows.length === 0) {
+          rankBody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-slate-400">尚無同仁積分紀錄</td></tr>';
+        }
+
+        rankRows.forEach(function (item, i) {
+          const medal = i === 0 ? "🥇 1" : (i === 1 ? "🥈 2" : (i === 2 ? "🥉 3" : String(i + 1)));
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-amber-50/40";
+          tr.innerHTML =
+            '<td class="py-2.5 px-3 font-mono font-black text-slate-700 whitespace-nowrap">' + medal + '</td>' +
+            '<td class="py-2.5 px-3 whitespace-nowrap">' +
+              '<span class="font-black text-slate-900">' + escapeHtml(item.name) + '</span> ' +
+              '<span class="text-[11px] font-mono text-slate-400">(' + escapeHtml(item.empId) + ')</span>' +
+            '</td>' +
+            '<td class="py-2.5 px-3 font-mono font-bold text-slate-600 whitespace-nowrap">' + item.count + ' 次</td>' +
+            '<td class="py-2.5 px-3 text-right font-mono font-black text-[#d97706] whitespace-nowrap">+' + item.points + ' 點</td>';
+          rankBody.appendChild(tr);
+        });
+
+        const kw = String(document.getElementById("adminRecordSearchInput").value || "").trim().toLowerCase();
+        const recBody = document.getElementById("adminRecordsTableBody");
+        recBody.innerHTML = "";
+
+        const filteredRecs = (appState.records || []).filter(function (r) {
+          if (r.isPractice) return false;
+          if (!kw) return true;
+          const empName = r.empName || r.name || "";
+          const text = (empName + " " + r.empId + " " + r.quizTitle).toLowerCase();
+          return text.indexOf(kw) !== -1;
+        });
+
+        if (filteredRecs.length === 0) {
+          recBody.innerHTML = '<tr><td colspan="4" class="py-6 text-center text-slate-400">尚無符合條件的考核紀錄</td></tr>';
+          return;
+        }
+
+        filteredRecs.forEach(function (rec) {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50";
+          const empName = rec.empName || rec.name || "";
+          const pts = getRecordEarnedPoints(rec);
+          const cleanDuration = formatDurationText(rec.duration);
+          const wrongArr = Array.isArray(rec.wrongDetails) ? rec.wrongDetails : [];
+
+          tr.innerHTML =
+            '<td class="py-2.5 pr-2 whitespace-nowrap">' +
+              '<span class="font-black text-slate-900 block">' + escapeHtml(empName) + '</span>' +
+              '<span class="text-[10px] font-mono text-slate-400">' + escapeHtml(rec.empId) + '</span>' +
+            '</td>' +
+            '<td class="py-2.5 pr-2">' +
+              '<span class="font-semibold text-slate-700 block truncate max-w-[140px]">' + escapeHtml(rec.quizTitle) + '</span>' +
+              '<span class="text-[10px] font-mono text-slate-400 whitespace-nowrap">' + escapeHtml(rec.date) + ' · ' + escapeHtml(cleanDuration) + '</span>' +
+            '</td>' +
+            '<td class="py-2.5 pr-2 font-mono whitespace-nowrap">' +
+              '<span class="font-black text-[#047857]">' + rec.score + ' 分</span>' +
+              '<span class="text-[10px] font-bold text-[#d97706] block">+' + pts + ' 點</span>' +
+            '</td>';
+
+          const tdDetail = document.createElement("td");
+          tdDetail.className = "py-2.5 text-right whitespace-nowrap";
+          const detailBtn = document.createElement("button");
+          detailBtn.type = "button";
+          detailBtn.className = wrongArr.length > 0
+            ? "px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] rounded-lg border border-rose-200 transition whitespace-nowrap"
+            : "px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition whitespace-nowrap";
+          detailBtn.textContent = wrongArr.length > 0 ? ("錯 " + wrongArr.length + " 題明細") : "作答明細";
+          detailBtn.onclick = function () {
+            openWrongDetailModal(rec);
+          };
+
+          tdDetail.appendChild(detailBtn);
+          tr.appendChild(tdDetail);
+          recBody.appendChild(tr);
+        });
+      }
+
+      function openWrongDetailModal(rec) {
+        const empName = rec.empName || rec.name || "";
+        const cleanDuration = formatDurationText(rec.duration);
+        document.getElementById("wrongDetailTitle").textContent = empName + " (" + rec.empId + ") — 作答明細";
+        document.getElementById("wrongDetailSubtitle").textContent = rec.quizTitle + " ｜ 得分：" + rec.score + " 分 ｜ 耗時：" + cleanDuration;
+
+        const body = document.getElementById("wrongDetailBody");
+        body.innerHTML = "";
+
+        if (Array.isArray(rec.allDetails) && rec.allDetails.length > 0) {
+          rec.allDetails.forEach(function (d, idx) {
+            const box = document.createElement("div");
+            box.className = d.isCorrect
+              ? "p-3 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-1.5 text-xs"
+              : "p-3 rounded-xl border border-rose-200 bg-rose-50/60 space-y-1.5 text-xs";
+
+            box.innerHTML =
+              '<div class="flex items-center justify-between font-black">' +
+                '<span class="' + (d.isCorrect ? "text-[#065f46]" : "text-rose-800") + '">第 ' + (idx + 1) + ' 題 · ' + escapeHtml(d.typeLabel || "") + '</span>' +
+                '<span class="text-[10px] px-2 py-0.5 rounded ' + (d.isCorrect ? "bg-emerald-200 text-emerald-950" : "bg-rose-200 text-rose-950") + '">' +
+                  (d.isCorrect ? "✓ 正確" : "✕ 錯誤") +
+                '</span>' +
+              '</div>' +
+              '<p class="font-bold text-slate-900">' + escapeHtml(d.question) + '</p>' +
+              '<p class="text-[11px]"><span class="text-slate-500">同仁作答：</span><span class="font-bold ' + (d.isCorrect ? "text-[#047857]" : "text-rose-700") + '">' + escapeHtml(d.userAnswerText) + '</span></p>' +
+              '<p class="text-[11px]"><span class="text-slate-500">標準解答：</span><span class="font-bold text-slate-900">' + escapeHtml(d.standardAnswerText) + '</span></p>' +
+              '<p class="text-[11px] text-slate-600 bg-white/90 p-2 rounded-lg border border-slate-200"><strong>SOP 指引：</strong>' + escapeHtml(d.explanation || "") + '</p>';
+            body.appendChild(box);
+          });
+        } else if (Array.isArray(rec.wrongDetails) && rec.wrongDetails.length > 0) {
+          rec.wrongDetails.forEach(function (w) {
+            const box = document.createElement("div");
+            box.className = "p-3 rounded-xl border border-rose-200 bg-rose-50/60 space-y-1.5 text-xs";
+            box.innerHTML =
+              '<span class="font-black text-rose-800 block">第 ' + w.qIndex + ' 題（答錯）</span>' +
+              '<p class="font-bold text-slate-900">' + escapeHtml(w.question) + '</p>' +
+              '<p class="text-[11px]"><span class="text-slate-500">同仁作答：</span><span class="font-bold text-rose-700">' + escapeHtml(w.userAnswer) + '</span></p>' +
+              '<p class="text-[11px]"><span class="text-slate-500">標準解答：</span><span class="font-bold text-slate-900">' + escapeHtml(w.correctAnswer) + '</span></p>';
+            body.appendChild(box);
+          });
+        } else if (typeof rec.wrongDetails === "string" && rec.wrongDetails.trim() && rec.wrongDetails !== "全對無錯題" && rec.wrongDetails !== "[]") {
+          body.innerHTML = '<div class="p-3 rounded-xl border border-rose-200 bg-rose-50/60 text-xs whitespace-pre-line text-slate-800">' + escapeHtml(rec.wrongDetails) + '</div>';
+        } else {
+          body.innerHTML = '<p class="text-xs text-slate-500 text-center py-8">本次考核全數答對，無錯題紀錄！</p>';
+        }
+
+        document.getElementById("wrongDetailModal").classList.remove("hidden");
+      }
+
+      // =====================================================================
+      // 事件綁定初始化
+      // =====================================================================
+
+      function bindAllEvents() {
+        // 頂部導航
+        document.getElementById("openStudyBtn").onclick = openStudyModal;
+        document.getElementById("openAdminBtn").onclick = function () {
+          if (appState.isAdminLoggedIn) {
+            openAdminPanel();
+          } else {
+            document.getElementById("adminPasswordInput").value = "";
+            document.getElementById("adminLoginModal").classList.remove("hidden");
+          }
+        };
+
+        // 首頁員編驗證與開始測驗
+        document.getElementById("staffEmpIdInput").oninput = function (e) {
+          verifyStaffEmpId(e.target.value);
+        };
+
+        document.getElementById("startExamButton").onclick = function () {
+          if (!appState.verifiedStaff) return;
+          const activeQuiz = appState.quizDatabase[appState.activeQuizId];
+          if (!activeQuiz) {
+            showToast("目前尚無發布考卷，請先於管理員後台建立考卷！", "⚠️", "bg-amber-700");
+            return;
+          }
+          const completedRec = appState.records.find(function (r) {
+            return !r.isPractice &&
+              normalizeEmpId(r.empId) === normalizeEmpId(appState.verifiedStaff.empId) &&
+              (r.quizId === appState.activeQuizId || r.quizTitle === activeQuiz.title);
+          });
+
+          if (completedRec) {
+            renderResultView(completedRec);
+            return;
+          }
+          startExamSession(activeQuiz, false);
+        };
+
+        // 測驗作答控制
+        document.getElementById("quitExamButton").onclick = function () {
+          openConfirmDialog({
+            icon: "🚪",
+            title: "確定要離開測驗嗎？",
+            desc: "返回首頁將不會保存本次作答進度。",
+            okText: "放棄並返回",
+            danger: true,
+            onConfirm: function () {
+              stopExamTimer();
+              document.getElementById("examView").classList.add("hidden");
+              document.getElementById("homeView").classList.remove("hidden");
+            }
+          });
+        };
+
+        document.getElementById("examPrevBtn").onclick = function () {
+          if (appState.currentQIdx > 0) {
+            appState.currentQIdx -= 1;
+            renderCurrentExamQuestion();
+          }
+        };
+
+        document.getElementById("examNextBtn").onclick = function () {
+          const total = appState.currentExamQuiz.questions.length;
+          if (appState.currentQIdx < total - 1) {
+            appState.currentQIdx += 1;
+            renderCurrentExamQuestion();
+          }
+        };
+
+        document.getElementById("examSubmitBtn").onclick = function () {
+          const quiz = appState.currentExamQuiz;
+          let unanswered = 0;
+          quiz.questions.forEach(function (q, i) {
+            if (!isQuestionAnswered(q, appState.userAnswers[i])) unanswered++;
+          });
+
+          openConfirmDialog({
+            icon: "📋",
+            title: "確定提交考卷？",
+            desc: unanswered > 0
+              ? ("尚有 " + unanswered + " 題未作答，未作答題目將以 0 分計算，確定交卷嗎？")
+              : "所有題目皆已作答完成，確定提交考卷並進行自動閱卷結算嗎？",
+            okText: "確定交卷",
+            danger: false,
+            onConfirm: submitAndGradeExam
+          });
+        };
+
+        // 考後結算返回首頁
+        document.getElementById("resultReturnHomeBtn").onclick = function () {
+          document.getElementById("resultView").classList.add("hidden");
+          document.getElementById("homeView").classList.remove("hidden");
+          verifyStaffEmpId(document.getElementById("staffEmpIdInput").value);
+        };
+
+        // 考券複習視窗
+        document.getElementById("closeStudyBtn").onclick = function () {
+          document.getElementById("studyModal").classList.add("hidden");
+        };
+        document.getElementById("startPracticeBtn").onclick = function () {
+          const targetQuiz = appState.quizDatabase[appState.studySelectedQuizId];
+          if (!targetQuiz) return;
+          document.getElementById("studyModal").classList.add("hidden");
+          startExamSession(targetQuiz, true);
+        };
+
+        // 管理員登入與登出
+        document.getElementById("cancelAdminLoginBtn").onclick = function () {
+          document.getElementById("adminLoginModal").classList.add("hidden");
+        };
+        document.getElementById("submitAdminLoginBtn").onclick = function () {
+          const pw = document.getElementById("adminPasswordInput").value.trim();
+          if (pw === ADMIN_PASSCODE) {
+            appState.isAdminLoggedIn = true;
+            document.getElementById("adminLoginModal").classList.add("hidden");
+            openAdminPanel();
+            showToast("管理員登入成功", "👑", "bg-[#065f46]");
+          } else {
+            showToast("管理員密碼錯誤", "❌", "bg-rose-700");
+          }
+        };
+        document.getElementById("adminPasswordInput").onkeydown = function (e) {
+          if (e.key === "Enter") document.getElementById("submitAdminLoginBtn").click();
+        };
+
+        document.getElementById("closeAdminPanelBtn").onclick = function () {
+          document.getElementById("adminPanelModal").classList.add("hidden");
+        };
+        document.getElementById("adminLogoutBtn").onclick = function () {
+          appState.isAdminLoggedIn = false;
+          document.getElementById("adminPanelModal").classList.add("hidden");
+          showToast("已登出管理員模式", "👋", "bg-slate-700");
+        };
+
+        // 手動同步雲端按鈕
+        document.getElementById("adminSyncNowBtn").onclick = function () {
+          fetchCloudData(true);
+        };
+
+        // 後台三大分頁切換
+        document.getElementById("tabBtnQuizzes").onclick = function () { switchAdminTab("quizzes"); };
+        document.getElementById("tabBtnRoster").onclick = function () { switchAdminTab("roster"); };
+        document.getElementById("tabBtnRanking").onclick = function () { switchAdminTab("ranking"); };
+
+        // 考卷切換、新增、刪除、設為啟用與基本設定
+        document.getElementById("adminQuizSelect").onchange = function (e) {
+          appState.adminSelectedQuizId = e.target.value;
+          resetQuestionEditorForm();
+          renderAdminQuizSelector();
+          renderAdminQuestionList();
+        };
+
+        document.getElementById("toggleCreateQuizBtn").onclick = function () {
+          document.getElementById("createQuizInlineRow").classList.toggle("hidden");
+        };
+
+        // 點擊「+ 新增考卷」建立新考券時，預設 inReviewZone: false（未公開草稿狀態）
+        document.getElementById("confirmCreateQuizBtn").onclick = function () {
+          const title = document.getElementById("newQuizTitleInput").value.trim();
+          if (!title) {
+            showToast("請輸入新考卷名稱！", "⚠️", "bg-amber-700");
+            return;
+          }
+          const newId = "quiz_" + Date.now();
+          appState.quizDatabase[newId] = {
+            id: newId,
+            title: title,
+            inReviewZone: false,
+            questions: []
+          };
+          appState.adminSelectedQuizId = newId;
+          if (!appState.activeQuizId || !appState.quizDatabase[appState.activeQuizId]) {
+            appState.activeQuizId = newId;
+          }
+          document.getElementById("newQuizTitleInput").value = "";
+          document.getElementById("createQuizInlineRow").classList.add("hidden");
+          resetQuestionEditorForm();
+          renderAdminQuizSelector();
+          renderAdminQuestionList();
+          renderHomeQuizInfo();
+          postAdminConfigToCloud("已建立考卷【" + title + "】");
+        };
+
+        document.getElementById("deleteSelectedQuizBtn").onclick = function () {
+          const targetId = appState.adminSelectedQuizId;
+          if (!targetId || !appState.quizDatabase[targetId]) {
+            showToast("目前沒有可刪除的考卷！", "⚠️", "bg-amber-700");
+            return;
+          }
+          if (targetId === appState.activeQuizId) {
+            showToast("無法刪除目前正在發布中的考卷，請先切換其他考卷為發布狀態！", "⚠️", "bg-amber-700");
+            return;
+          }
+          const qTitle = appState.quizDatabase[targetId].title;
+          openConfirmDialog({
+            icon: "🗑️",
+            title: "確定刪除考卷？",
+            desc: "即將刪除考卷【" + qTitle + "】及其所有試題，此操作無法復原。",
+            okText: "確認刪除",
+            danger: true,
+            onConfirm: function () {
+              delete appState.quizDatabase[targetId];
+              appState.adminSelectedQuizId = appState.activeQuizId;
+              renderAdminQuizSelector();
+              renderAdminQuestionList();
+              postAdminConfigToCloud("已刪除考卷");
+            }
+          });
+        };
+
+        // 點擊「★ 設為目前發布考卷」時，自動將該考券 inReviewZone 強制設為 false 並同步雲端
+        document.getElementById("setActiveQuizBtn").onclick = function () {
+          const targetId = appState.adminSelectedQuizId;
+          appState.activeQuizId = targetId;
+          if (appState.quizDatabase[targetId]) {
+            appState.quizDatabase[targetId].inReviewZone = false;
+          }
+          renderAdminQuizSelector();
+          renderHomeQuizInfo();
+          const empVal = document.getElementById("staffEmpIdInput").value;
+          if (empVal) verifyStaffEmpId(empVal);
+          postAdminConfigToCloud("已設為目前發布考卷（並自動從複習專區移出）");
+        };
+
+        // 儲存考卷基本設定（標題與是否加入複習專區）
+        document.getElementById("saveQuizMetaBtn").onclick = function () {
+          const curQuiz = appState.quizDatabase[appState.adminSelectedQuizId];
+          if (!curQuiz) return;
+          const newTitle = document.getElementById("quizMetaTitleInput").value.trim();
+          if (!newTitle) {
+            showToast("考卷標題不可為空白！", "⚠️", "bg-amber-700");
+            return;
+          }
+          curQuiz.title = newTitle;
+
+          if (curQuiz.id === appState.activeQuizId) {
+            curQuiz.inReviewZone = false;
+          } else {
+            curQuiz.inReviewZone = document.getElementById("quizInReviewZoneCheckbox").checked;
+          }
+
+          renderAdminQuizSelector();
+          renderHomeQuizInfo();
+          postAdminConfigToCloud("考卷基本設定已儲存");
+        };
+
+        // 題型切換與題目儲存
+        document.getElementById("qTypeSelect").onchange = function (e) {
+          updateQuestionEditorDynamicFields(e.target.value);
+        };
+
+        document.getElementById("cancelEditQuestionBtn").onclick = resetQuestionEditorForm;
+
+        document.getElementById("saveQuestionButton").onclick = function () {
+          const curQuiz = appState.quizDatabase[appState.adminSelectedQuizId];
+          if (!curQuiz) return;
+
+          const type = document.getElementById("qTypeSelect").value;
+          const category = document.getElementById("qCategoryInput").value.trim() || "業務實務";
+          const question = document.getElementById("qPromptInput").value.trim();
+          const explanation = document.getElementById("qExplanationInput").value.trim() || "請依標準作業程序執行。";
+
+          if (!question) {
+            showToast("請輸入題目敘述！", "⚠️", "bg-amber-700");
+            return;
+          }
+
+          const qObj = {
+            id: appState.editingQuestionIdx >= 0 ? curQuiz.questions[appState.editingQuestionIdx].id : ("q_" + Date.now()),
+            type: type,
+            category: category,
+            question: question,
+            explanation: explanation
+          };
+
+          if (type === "single") {
+            const opts = [
+              document.getElementById("singleOpt0").value.trim(),
+              document.getElementById("singleOpt1").value.trim(),
+              document.getElementById("singleOpt2").value.trim(),
+              document.getElementById("singleOpt3").value.trim()
+            ];
+            if (opts.some(function (o) { return !o; })) {
+              showToast("請完整填寫單選題的 A、B、C、D 四個選項！", "⚠️", "bg-amber-700");
+              return;
+            }
+            const checkedRadio = document.querySelector('input[name="singleCorrectRadio"]:checked');
+            const cIdx = checkedRadio ? Number(checkedRadio.value) : 0;
+            qObj.options = opts;
+            qObj.correctIndex = cIdx;
+            qObj.answer = cIdx;
+
+          } else if (type === "boolean") {
+            const checkedBool = document.querySelector('input[name="booleanCorrectRadio"]:checked');
+            const cBool = checkedBool ? (checkedBool.value === "true") : true;
+            qObj.correctBoolean = cBool;
+            qObj.answer = cBool;
+
+          } else if (type === "multiple") {
+            const opts = [
+              document.getElementById("multiOpt0").value.trim(),
+              document.getElementById("multiOpt1").value.trim(),
+              document.getElementById("multiOpt2").value.trim(),
+              document.getElementById("multiOpt3").value.trim()
+            ];
+            if (opts.some(function (o) { return !o; })) {
+              showToast("請完整填寫複選題的 A、B、C、D 四個選項！", "⚠️", "bg-amber-700");
+              return;
+            }
+            const checkedBoxes = Array.from(document.querySelectorAll('input[name="multiCorrectCheck"]:checked'))
+              .map(function (cb) { return Number(cb.value); })
+              .sort(function (a, b) { return a - b; });
+
+            if (checkedBoxes.length < 2) {
+              showToast("複選題請至少勾選 2 個正確選項！", "⚠️", "bg-amber-700");
+              return;
+            }
+            qObj.options = opts;
+            qObj.correctIndices = checkedBoxes;
+            qObj.answer = checkedBoxes;
+
+          } else if (type === "text") {
+            const accepted = document.getElementById("textAcceptedInput").value.trim();
+            if (!accepted) {
+              showToast("請輸入填空／簡答題的標準答案或關鍵字！", "⚠️", "bg-amber-700");
+              return;
+            }
+            const rule = document.getElementById("textMatchRuleSelect").value;
+            qObj.acceptedAnswers = accepted;
+            qObj.answer = accepted;
+            qObj.matchRule = rule;
+            qObj.matchMode = rule;
+          }
+
+          const isUpdate = appState.editingQuestionIdx >= 0;
+          if (isUpdate) {
+            curQuiz.questions[appState.editingQuestionIdx] = qObj;
+          } else {
+            curQuiz.questions.push(qObj);
+          }
+
+          resetQuestionEditorForm();
+          renderAdminQuestionList();
+          renderHomeQuizInfo();
+          postAdminConfigToCloud(isUpdate ? "試題已更新" : "新試題已儲存");
+        };
+
+        // 同仁名冊儲存 (僅使用員編與姓名，無職稱欄位)
+        document.getElementById("saveRosterMemberBtn").onclick = function () {
+          const rawId = document.getElementById("rosterEmpIdInput").value.trim();
+          const name = document.getElementById("rosterNameInput").value.trim();
+
+          if (!rawId || !name) {
+            showToast("請輸入員工編號與同仁姓名！", "⚠️", "bg-amber-700");
+            return;
+          }
+
+          const formattedId = /^\d+$/.test(rawId) ? rawId.padStart(6, "0") : rawId;
+          const existingIdx = appState.roster.findIndex(function (m) {
+            return normalizeEmpId(m.empId) === normalizeEmpId(formattedId);
+          });
+
+          if (existingIdx >= 0) {
+            appState.roster[existingIdx] = { empId: formattedId, name: name };
+          } else {
+            appState.roster.push({ empId: formattedId, name: name });
+          }
+
+          document.getElementById("rosterEmpIdInput").value = "";
+          document.getElementById("rosterNameInput").value = "";
+          renderAdminRosterTable();
+          postAdminConfigToCloud("同仁名冊已更新");
+        };
+
+        // 考試紀錄搜尋、錯題詳情彈窗與 CSV 匯出
+        document.getElementById("adminRecordSearchInput").oninput = renderAdminRankingAndRecords;
+        document.getElementById("closeWrongDetailBtn").onclick = function () {
+          document.getElementById("wrongDetailModal").classList.add("hidden");
+        };
+
+        document.getElementById("exportCsvButton").onclick = function () {
+          const officialRecs = (appState.records || []).filter(function (r) { return !r.isPractice; });
+          if (officialRecs.length === 0) {
+            showToast("目前尚無正式考核紀錄可匯出", "⚠️", "bg-amber-700");
+            return;
+          }
+          let csv = "\uFEFF考核日期時間,員工編號,同仁姓名,考卷名稱,得分,獲得總積分,測驗耗時,錯題數\n";
+          officialRecs.forEach(function (r) {
+            const empName = r.empName || r.name || "";
+            const pts = getRecordEarnedPoints(r);
+            const cleanDuration = formatDurationText(r.duration);
+            const wrongCnt = Array.isArray(r.wrongDetails) ? r.wrongDetails.length : 0;
+            csv += '"' + (r.date || "") + '","' + (r.empId || "") + '","' + empName + '","' + (r.quizTitle || "") + '",' +
+              (r.score || 0) + ',' + pts + ',"' + cleanDuration + '",' + wrongCnt + '\n';
+          });
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "糾察隊考試成績與積分報表_" + new Date().toISOString().slice(0, 10) + ".csv";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast("CSV 成績報表匯出成功！", "📥", "bg-[#065f46]");
+        };
+
+        // 年度積分歸零（二次密碼防呆）
+        document.getElementById("resetAnnualPointsBtn").onclick = function () {
+          openSecurityPasswordDialog({
+            icon: "🔄",
+            title: "年度積分歸零 — 二次密碼驗證",
+            desc: "此操作會將全員累積年度積分歸零（保留歷史作答紀錄），請輸入管理員密碼確認執行：",
+            okText: "確認歸零",
+            warning: true,
+            onVerified: function () {
+              const resetTs = Date.now();
+              appState.pointsResetAt = resetTs;
+              (appState.records || []).forEach(function (r) {
+                r.totalPoints = 0;
+                r.points = 0;
+                r.earnedPoints = 0;
+                r.pointsEarned = 0;
+                r.pointsZeroed = true;
+              });
+              refreshAdminPanelViews();
+              const empVal = document.getElementById("staffEmpIdInput").value;
+              if (empVal) verifyStaffEmpId(empVal);
+              postAdminConfigToCloud("全員年度積分已歸零");
+            }
+          });
+        };
+
+        // 刪除資料（二次密碼防呆）
+        document.getElementById("deleteAllRecordsBtn").onclick = function () {
+          openSecurityPasswordDialog({
+            icon: "🗑️",
+            title: "刪除資料 — 二次密碼驗證",
+            desc: "即將清空所有考核成績與積分紀錄，此操作無法復原，請輸入管理員密碼確認執行：",
+            okText: "確認刪除",
+            warning: false,
+            onVerified: function () {
+              const clearedTs = Date.now();
+              appState.recordsClearedAt = clearedTs;
+              appState.records = [];
+              refreshAdminPanelViews();
+              const empVal = document.getElementById("staffEmpIdInput").value;
+              if (empVal) verifyStaffEmpId(empVal);
+              postAdminConfigToCloud("已刪除所有考核資料");
+              try {
+                fetch(GAS_API_URL, {
+                  method: "POST",
+                  headers: { "Content-Type": "text/plain;charset=utf-8" },
+                  body: JSON.stringify({ action: "clearRecords", clearedAt: clearedTs })
+                });
+              } catch (e) {}
+            }
+          });
+        };
+
+        // 二次密碼防呆對話框按鈕
+        document.getElementById("securityCancelBtn").onclick = function () {
+          document.getElementById("securityPasswordModal").classList.add("hidden");
+        };
+        document.getElementById("securityConfirmBtn").onclick = function () {
+          if (typeof appState.securityAction === "function") {
+            appState.securityAction();
+          }
+        };
+        document.getElementById("securityPasswordInput").onkeydown = function (e) {
+          if (e.key === "Enter") document.getElementById("securityConfirmBtn").click();
+        };
+
+        // 通用確認對話框按鈕
+        document.getElementById("confirmCancelBtn").onclick = function () {
+          document.getElementById("confirmModal").classList.add("hidden");
+        };
+        document.getElementById("confirmOkBtn").onclick = function () {
+          if (typeof appState.confirmAction === "function") {
+            appState.confirmAction();
+          }
+        };
+      }
+
+      // 啟動系統
+      function initSystem() {
+        try {
+          loadFromLocalStorage();
+          renderHomeQuizInfo();
+          bindAllEvents();
+          fetchCloudData(false);
+        } catch (err) {
+          console.error("System bootstrap error:", err);
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initSystem);
+      } else {
+        initSystem();
+      }
+    })();
+  </script>
+</body>
+</html>
