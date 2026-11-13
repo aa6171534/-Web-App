@@ -45,7 +45,7 @@
   <!-- ===================================================================== -->
   <!-- 1. 頂部導航列 (標題：「糾察隊考試」、雲端連線狀態、考券複習與管理員模式)  -->
   <!-- ===================================================================== -->
-  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+  <header class="bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
     <div class="max-w-lg mx-auto px-4 py-3 space-y-2.5">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2.5 min-w-0">
@@ -398,9 +398,9 @@
 
   <!-- Modal 3：管理員後台主控台 -->
   <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
-    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto custom-scroll">
       <!-- 頂部標題與雲端狀態列 -->
-      <div class="p-4 border-b border-slate-200 space-y-3 shrink-0">
+      <div class="p-4 border-b border-slate-200 space-y-3">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0">
             <span class="text-base">⚙️</span>
@@ -425,22 +425,22 @@
           </button>
         </div>
 
-        <!-- 後台三大功能分頁切換列 -->
-        <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
-          <button id="tabBtnQuizzes" type="button" class="py-2 px-2 rounded-lg bg-white text-slate-900 font-black text-xs shadow-2xs transition whitespace-nowrap">
+        <!-- 後台三大功能分頁切換列（三欄平均等寬且不釘選於頂部） -->
+        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+          <button id="tabBtnQuizzes" type="button" class="w-full py-2 px-0.5 sm:px-2 rounded-lg bg-white text-slate-900 font-black text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal shadow-2xs transition whitespace-nowrap text-center">
             📝 考卷與出題
           </button>
-          <button id="tabBtnRoster" type="button" class="py-2 px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-xs transition whitespace-nowrap">
+          <button id="tabBtnRoster" type="button" class="w-full py-2 px-0.5 sm:px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal transition whitespace-nowrap text-center">
             🪪 同仁名冊
           </button>
-          <button id="tabBtnRanking" type="button" class="py-2 px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-xs transition whitespace-nowrap">
+          <button id="tabBtnRanking" type="button" class="w-full py-2 px-0.5 sm:px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal transition whitespace-nowrap text-center">
             👑 全員年度積分與成績
           </button>
         </div>
       </div>
 
       <!-- 分頁內容區 -->
-      <div class="p-4 overflow-y-auto flex-1 custom-scroll">
+      <div class="p-4">
 
         <!-- =============================================================== -->
         <!-- 分頁 1：考卷設定與四大題型出題編輯器                              -->
@@ -1014,6 +1014,12 @@
 
         rawList.forEach(function (r) {
           if (!r || typeof r !== "object") return;
+          const eIdCheck = String(r.empId || "").trim();
+          const eNameCheck = String(r.empName || r.name || "").trim();
+          const qTitleCheck = String(r.quizTitle || "").trim();
+          if (!eIdCheck && !eNameCheck && !qTitleCheck) {
+            return;
+          }
           const recTs = getRecordTimestamp(r);
           if (appState.recordsClearedAt > 0 && (recTs === 0 || recTs <= appState.recordsClearedAt)) {
             return;
@@ -2230,10 +2236,10 @@
 
         Object.keys(tabs).forEach(function (key) {
           if (key === tabName) {
-            tabs[key].btn.className = "py-2 px-2 rounded-lg bg-white text-slate-900 font-black text-xs shadow-2xs transition whitespace-nowrap";
+            tabs[key].btn.className = "w-full py-2 px-0.5 sm:px-2 rounded-lg bg-white text-slate-900 font-black text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal shadow-2xs transition whitespace-nowrap text-center";
             tabs[key].panel.classList.remove("hidden");
           } else {
-            tabs[key].btn.className = "py-2 px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-xs transition whitespace-nowrap";
+            tabs[key].btn.className = "w-full py-2 px-0.5 sm:px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal transition whitespace-nowrap text-center";
             tabs[key].panel.classList.add("hidden");
           }
         });
@@ -3144,13 +3150,6 @@
               const empVal = document.getElementById("staffEmpIdInput").value;
               if (empVal) verifyStaffEmpId(empVal);
               postAdminConfigToCloud("已刪除所有考核資料");
-              try {
-                fetch(GAS_API_URL, {
-                  method: "POST",
-                  headers: { "Content-Type": "text/plain;charset=utf-8" },
-                  body: JSON.stringify({ action: "clearRecords", clearedAt: clearedTs })
-                });
-              } catch (e) {}
             }
           });
         };
