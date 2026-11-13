@@ -397,8 +397,8 @@
   </div>
 
   <!-- Modal 3：管理員後台主控台 -->
-  <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4">
-    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto custom-scroll">
+  <div id="adminPanelModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs overflow-y-auto p-2.5 sm:p-4">
+    <div class="bg-white w-full max-w-2xl mx-auto my-2 sm:my-6 rounded-2xl shadow-2xl">
       <!-- 頂部標題與雲端狀態列 -->
       <div class="p-4 border-b border-slate-200 space-y-3">
         <div class="flex items-center justify-between gap-2">
@@ -425,16 +425,19 @@
           </button>
         </div>
 
-        <!-- 後台三大功能分頁切換列（三欄平均等寬且不釘選於頂部） -->
-        <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
-          <button id="tabBtnQuizzes" type="button" class="w-full py-2 px-0.5 sm:px-2 rounded-lg bg-white text-slate-900 font-black text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal shadow-2xs transition whitespace-nowrap text-center">
-            📝 考卷與出題
+        <!-- 後台三大功能分頁切換列（三欄嚴格平均等寬且不釘選於頂部） -->
+        <div class="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1 bg-slate-100 p-1 rounded-xl">
+          <button id="tabBtnQuizzes" type="button" class="w-full min-w-0 py-2 px-1 rounded-lg bg-white text-slate-900 font-black text-[10px] min-[390px]:text-[11px] sm:text-xs shadow-2xs transition flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-center">
+            <span class="text-xs sm:text-sm leading-none">📝</span>
+            <span class="leading-tight break-keep">考卷與出題</span>
           </button>
-          <button id="tabBtnRoster" type="button" class="w-full py-2 px-0.5 sm:px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal transition whitespace-nowrap text-center">
-            🪪 同仁名冊
+          <button id="tabBtnRoster" type="button" class="w-full min-w-0 py-2 px-1 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[390px]:text-[11px] sm:text-xs transition flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-center">
+            <span class="text-xs sm:text-sm leading-none">🪪</span>
+            <span class="leading-tight break-keep">同仁名冊</span>
           </button>
-          <button id="tabBtnRanking" type="button" class="w-full py-2 px-0.5 sm:px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal transition whitespace-nowrap text-center">
-            👑 全員年度積分與成績
+          <button id="tabBtnRanking" type="button" class="w-full min-w-0 py-2 px-1 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[390px]:text-[11px] sm:text-xs transition flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-center">
+            <span class="text-xs sm:text-sm leading-none">👑</span>
+            <span class="leading-tight break-keep">全員年度積分與成績</span>
           </button>
         </div>
       </div>
@@ -2236,10 +2239,10 @@
 
         Object.keys(tabs).forEach(function (key) {
           if (key === tabName) {
-            tabs[key].btn.className = "w-full py-2 px-0.5 sm:px-2 rounded-lg bg-white text-slate-900 font-black text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal shadow-2xs transition whitespace-nowrap text-center";
+            tabs[key].btn.className = "w-full min-w-0 py-2 px-1 rounded-lg bg-white text-slate-900 font-black text-[10px] min-[390px]:text-[11px] sm:text-xs shadow-2xs transition flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-center";
             tabs[key].panel.classList.remove("hidden");
           } else {
-            tabs[key].btn.className = "w-full py-2 px-0.5 sm:px-2 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[400px]:text-[11px] sm:text-xs tracking-tighter sm:tracking-normal transition whitespace-nowrap text-center";
+            tabs[key].btn.className = "w-full min-w-0 py-2 px-1 rounded-lg text-slate-600 hover:text-slate-900 font-bold text-[10px] min-[390px]:text-[11px] sm:text-xs transition flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 text-center";
             tabs[key].panel.classList.add("hidden");
           }
         });
