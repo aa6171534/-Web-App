@@ -610,15 +610,17 @@
             <!-- 動態答案設定區 D：填空 / 簡答題 (text) -->
             <div id="editorFieldsText" class="hidden space-y-2.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div>
-                <label class="block text-[11px] font-black text-slate-700 mb-1">標準答案 / 關鍵字 *（多組同義詞請用 <code class="bg-white px-1 rounded border">/</code> 分隔）</label>
-                <input id="textAcceptedInput" type="text" placeholder="例如：119/消防局"
+                <label class="block text-[11px] font-black text-slate-700 mb-1">標準答案 / 核心關鍵字 *（多組答案請用 <code class="bg-white px-1 rounded border">/</code> 分隔）</label>
+                <input id="textAcceptedInput" type="text" placeholder="例如：露營車/早餐/寵物 或 119/消防局"
                   class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
+                <p class="text-[10px] text-slate-500 mt-1">💡 建議填入簡短核心關鍵字（如「早餐」而非「僅含早餐」），系統會自動忽略標點、空格、全半形與大小寫。</p>
               </div>
               <div>
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">自動閱卷比對規則</label>
                 <select id="textMatchRuleSelect" class="w-full text-xs font-bold p-2.5 rounded-xl border border-slate-300 bg-white">
-                  <option value="exact">完全相符（支援多組同義詞，自動忽略全半形與大小寫）</option>
-                  <option value="contains">包含關鍵字即給分（作答內容包含任一關鍵字即算對）</option>
+                  <option value="contains">包含任一關鍵字即給分（推薦，適合簡答與同義詞）</option>
+                  <option value="all">須包含全部關鍵字才給分（適合多重點列舉題）</option>
+                  <option value="exact">完全相符（適合房型代號、電話號碼等精確答案）</option>
                 </select>
               </div>
             </div>
@@ -1114,12 +1116,32 @@
         return stripped === "" ? "0" : stripped;
       }
 
-      // 4. 全形轉半形、去頭尾空白並轉小寫 (用於填空/簡答自動閱卷)
+      // 4. 全形轉半形、去標點與空白、量詞數字統一並轉小寫 (用於填空/簡答自動閱卷)
       function normalizeTextAnswer(str) {
-        const halfWidth = String(str || "").replace(/[\uFF01-\uFF5E]/g, function (ch) {
-          return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
-        }).replace(/\u3000/g, " ");
+        const cnDigitMap = { "一": "1", "二": "2", "兩": "2", "三": "3", "四": "4", "五": "5", "六": "6", "七": "7", "八": "8", "九": "9", "十": "10" };
+        const halfWidth = String(str || "")
+          .replace(/[\uFF01-\uFF5E]/g, function (ch) {
+            return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+          })
+          .replace(/\u3000/g, " ")
+          .replace(/([一二兩三四五六七八九十])([隻張間人晚天份位組項次])/g, function (_, d, u) {
+            return (cnDigitMap[d] || d) + u;
+          })
+          .replace(/[\s，,、。．.；;：:！!？?（）()「」『』【】\[\]《》<>—_／\/｜|·•‧~～\-]+/g, "");
         return halfWidth.trim().toLowerCase();
+      }
+
+      // 智慧關鍵字比對（支援直接包含、以及自動去除「可以/免費/僅含/包含」等前綴贅詞）
+      function matchesKeywordSmart(normUser, normKw) {
+        if (!normUser || !normKw) return false;
+        if (normUser.indexOf(normKw) !== -1) return true;
+        if (normKw.length >= 4) {
+          const stem = normKw.replace(/^(?:可以|可|免費|僅含|包含|含有|需要|必須|請|應)+/, "");
+          if (stem.length >= 2 && stem !== normKw && normUser.indexOf(stem) !== -1) {
+            return true;
+          }
+        }
+        return false;
       }
 
       // 向下相容正規化題目物件
@@ -1152,7 +1174,8 @@
           normalized.answer = sortedArr;
         } else if (type === "text") {
           const ansStr = String(q.acceptedAnswers || q.answer || "");
-          const ruleStr = (q.matchRule === "contains" || q.matchMode === "contains") ? "contains" : "exact";
+          const rawRule = q.matchRule || q.matchMode || "contains";
+          const ruleStr = (rawRule === "exact" || rawRule === "all") ? rawRule : "contains";
           normalized.acceptedAnswers = ansStr;
           normalized.answer = ansStr;
           normalized.matchRule = ruleStr;
@@ -1232,9 +1255,11 @@
           }).join(" ｜ ");
         }
         if (q.type === "text") {
-          const parts = String(q.acceptedAnswers || "").split("/").map(function (s) { return s.trim(); }).filter(Boolean);
-          const ruleLabel = q.matchRule === "contains" ? "（包含關鍵字即給分）" : "（完全相符）";
-          return parts.join(" 或 ") + " " + ruleLabel;
+          const parts = String(q.acceptedAnswers || "").split(/[\/／|｜]/).map(function (s) { return s.trim(); }).filter(Boolean);
+          let ruleLabel = "（包含任一關鍵字即給分）";
+          if (q.matchRule === "exact") ruleLabel = "（完全相符）";
+          else if (q.matchRule === "all") ruleLabel = "（須包含全部關鍵字）";
+          return parts.join(" / ") + " " + ruleLabel;
         }
         const idx = Number(q.correctIndex || 0);
         return letters[idx] + ". " + (q.options[idx] || "");
@@ -1583,10 +1608,12 @@
         });
 
         if (completedRec) {
-          subMsg.innerHTML = '<span class="text-[#047857] font-bold">✓ 您已完成本月考核（得分：' + completedRec.score + ' 分），可點擊下方檢視詳解。</span>';
-          startBtn.disabled = false;
-          startBtn.className = "w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-white font-black text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer";
-          startBtn.innerHTML = '<span class="whitespace-nowrap">檢視本月成績與答題解析</span>';
+          subMsg.innerHTML =
+            '<span class="text-[#047857] font-black block">✓ 您已完成本月考核</span>' +
+            '<span class="text-[11px] text-slate-500 block mt-1">為維護考核公平性，關閉後不再開放查閱原試題，若有疑問請詢問出題委員。</span>';
+          startBtn.disabled = true;
+          startBtn.className = "w-full py-3.5 px-4 bg-slate-200 text-slate-500 font-black text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed";
+          startBtn.innerHTML = '<span class="whitespace-nowrap">🔒 本月考核已完成</span>';
         } else {
           subMsg.textContent = "身分核對正確，點擊下方按鈕即可開始考核。";
           startBtn.disabled = false;
@@ -1894,14 +1921,16 @@
             userAnswerDisplay = rawUserStr;
             const normUser = normalizeTextAnswer(rawUserStr);
             const acceptedList = String(q.acceptedAnswers || "")
-              .split("/")
+              .split(/[\/／|｜]/)
               .map(normalizeTextAnswer)
               .filter(function (s) { return s.length > 0; });
 
-            if (q.matchRule === "contains") {
-              isCorrect = acceptedList.some(function (kw) { return normUser.indexOf(kw) !== -1; });
-            } else {
+            if (q.matchRule === "exact") {
               isCorrect = acceptedList.some(function (ans) { return normUser === ans; });
+            } else if (q.matchRule === "all") {
+              isCorrect = acceptedList.length > 0 && acceptedList.every(function (kw) { return matchesKeywordSmart(normUser, kw); });
+            } else {
+              isCorrect = acceptedList.some(function (kw) { return matchesKeywordSmart(normUser, kw); });
             }
           }
         } else {
@@ -2319,7 +2348,7 @@
         for (let i = 0; i < 4; i++) document.getElementById("multiOpt" + i).value = "";
 
         document.getElementById("textAcceptedInput").value = "";
-        document.getElementById("textMatchRuleSelect").value = "exact";
+        document.getElementById("textMatchRuleSelect").value = "contains";
 
         updateQuestionEditorDynamicFields("single");
       }
@@ -2356,7 +2385,7 @@
           });
         } else if (type === "text") {
           document.getElementById("textAcceptedInput").value = q.acceptedAnswers || "";
-          document.getElementById("textMatchRuleSelect").value = q.matchRule || "exact";
+          document.getElementById("textMatchRuleSelect").value = q.matchRule || "contains";
         }
 
         updateQuestionEditorDynamicFields(type);
@@ -2700,7 +2729,7 @@
           });
 
           if (completedRec) {
-            renderResultView(completedRec);
+            showToast("您已完成本月考核，若有疑問請詢問出題委員", "🔒", "bg-slate-800");
             return;
           }
           startExamSession(activeQuiz, false);
