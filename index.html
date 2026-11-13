@@ -2822,7 +2822,7 @@
           if (!isGuest) {
             const startBtn = document.getElementById("startExamButton");
             startBtn.disabled = true;
-            startBtn.innerHTML = '<span class="whitespace-nowrap">🔄 正在向雲端核對作答紀錄...</span>';
+            startBtn.innerHTML = '<span class="whitespace-nowrap">🔄 考題生成中，請稍候...</span>';
 
             await fetchCloudData(false);
 
