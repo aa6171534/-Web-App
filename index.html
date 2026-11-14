@@ -3055,7 +3055,7 @@
 
           const type = document.getElementById("qTypeSelect").value;
           const question = document.getElementById("qPromptInput").value.trim();
-          const explanation = document.getElementById("qExplanationInput").value.trim() || "請依標準作業程序執行。";
+          const explanation = document.getElementById("qExplanationInput").value.trim() || "";
 
           if (!question) {
             showToast("請輸入題目敘述！", "⚠️", "bg-amber-700");
